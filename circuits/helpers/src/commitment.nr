@@ -1,5 +1,4 @@
 
-use super::blake3Hasher::black3_hash_to_field;
 use poseidon;
 
 /**
@@ -29,5 +28,5 @@ pub fn test_commitment_hasher() {
     let value: Field = (1000000000000000000 as u64).into();
     let label: Field = (0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97).into();
     let _commitment = commitment_hasher(nullifier, value, label, secret);
-    println(_commitment);
+    assert_eq( _commitment , 0x16e83a643e94248403eb0078a4b6996acf63857e47be823fdba2f0274aa66447 )
 }

@@ -1,4 +1,4 @@
-use super::blake3Hasher::black3_hash_to_field;
+
 
 // fn print_debug_fields<let size: u32>(fields: [Field; size]) {
 //     for field in fields {
@@ -65,7 +65,7 @@ pub fn lean_imt_inclusion_proof<let MAX_DEPTH: u32>(
             }
 
             // Hash the correctly ordered pair using BLAKE3
-            let hashed_pair = black3_hash_to_field([left_input, right_input]);
+            let hashed_pair = poseidon::poseidon2::Poseidon2::hash([left_input, right_input], 2);
             nodes[i + 1] = hashed_pair;
         }
     }
@@ -80,8 +80,8 @@ pub fn test_lean_imt_inclusion_proof() {
     let leaf_index: Field = (3 as u8).into();
     let siblings: [Field; 8] = [
         3,
-        0x17cb544f4d22abbae88f69c706f21367d7925abb131a13836745714dc896c150,
-        0x0d2d3ef5e1cf0f40c92ec8bba3606bef845fa56761bcd04cfbf0eb68a484e3b0,
+        0x038682aa1cb5ae4e0a3f13da432a95c77c5c111f6f030faf9cad641ce1ed7383,
+        0x232400b3cca0da78d26295f345d21e9bf8949238bee02b285140ebf183119982,
         0,
         0,
         0,
@@ -89,5 +89,5 @@ pub fn test_lean_imt_inclusion_proof() {
         0,
     ];
     let root = lean_imt_inclusion_proof(leaf, leaf_index, siblings);
-    assert(root == 0x2a21f1699d1113da4feaff73381129499db752fdc438cb48b2c630d4dbf063e5);
+    assert(root == 0x05d7e5aaddb74c086c24617065e8c97dea94b86fdae0eab7b498249e0dfee2a8);
 }

@@ -1,4 +1,4 @@
-import { pedersenHash } from "@aztec/foundation/crypto";
+import { pedersenHash, poseidon2Hash } from "@aztec/foundation/crypto";
 import { commitmentHasherTS } from "./commitment.play";
 import { LeanIMT, verifyPath } from "./leanIMT";
 
@@ -105,7 +105,7 @@ const computeClaimParams = async () => {
   let siblings = imt.getPath(leafIndex);
 
   let receiverSecret = 66666;
-  let receiverSecretHash = await pedersenHash([receiverSecret]);
+  let receiverSecretHash = await poseidon2Hash([receiverSecret]);
   let noteNonce = 12345;
 
   console.log(
@@ -151,5 +151,5 @@ const computeClaimParams = async () => {
   console.log("New commitment", newCommitment , (existingValue + claimValue).toString(16));
 };
 
-computeWithdrawParams();
+computeClaimParams();
 

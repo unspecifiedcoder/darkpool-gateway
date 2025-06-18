@@ -1,7 +1,5 @@
 import { Fr } from '@aztec/foundation/fields';
-import { pedersenHash } from '@aztec/foundation/crypto';
-import { ethers } from 'ethers'; // For ethers.parseEther and address handling
-import { commitmentHasherTS } from './commitment.play';
+import { poseidon2Hash } from '@aztec/foundation/crypto';
 
 export class LeanIMT {
     private root: Fr;
@@ -70,7 +68,7 @@ export class LeanIMT {
             } else {
                 const leftInput = isRightChild ? siblingNode : currentComputedNode;
                 const rightInput = isRightChild ? currentComputedNode : siblingNode;
-                parentNode = await pedersenHash([leftInput, rightInput]);
+                parentNode = await poseidon2Hash([leftInput, rightInput]);
 
 
             }
@@ -161,7 +159,7 @@ export const verifyPath = async (
         } else {
             const leftInput = pathDirectionBit === 0n ? currentComputedNode : siblingNode;
             const rightInput = pathDirectionBit === 0n ? siblingNode : currentComputedNode;
-            currentComputedNode = await pedersenHash([leftInput, rightInput]);
+            currentComputedNode = await poseidon2Hash([leftInput, rightInput]);
         }
     }
     return currentComputedNode.equals(expectedRoot);
@@ -185,6 +183,7 @@ const main = async () => {
     const leaf = imt.tree[0][leafIndex];
     const result = await verifyPath(leaf, leafIndex, siblings, expectedRoot, height, zeroValue);
 
+    console.log("Lean IMT params", leaf, leafIndex, siblings, expectedRoot, height, zeroValue);
     console.log(result, "with expected root", expectedRoot);
  
 };

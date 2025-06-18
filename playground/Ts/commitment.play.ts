@@ -1,6 +1,6 @@
 
 import { Fr } from '@aztec/foundation/fields';
-import { pedersenHash } from '@aztec/foundation/crypto';
+import { poseidon2Hash } from '@aztec/foundation/crypto';
 import { ethers } from 'ethers'; // For ethers.parseEther and address handling
 
 // --- Helper Functions ---
@@ -44,10 +44,10 @@ export const commitmentHasherTS = async (nullifier: bigint, secret: bigint, valu
     // console.log("  Value:    ", valueFr.toString());
     // console.log("  Label:    ", labelFr.toString(), `(from ${labelAddr})`);
     
-    const precommitment = await pedersenHash([nullifierFr, secretFr]);
+    const precommitment = await poseidon2Hash([nullifierFr, secretFr]);
     // console.log("Precommitment (hex):", precommitment.toBuffer().toString('hex'));
 
-    const commitment = await pedersenHash([valueFr, labelFr, precommitment]);
+    const commitment = await poseidon2Hash([valueFr, labelFr, precommitment]);
     // console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
     // console.log("--- End Commitment Hasher ---");
     return commitment;
