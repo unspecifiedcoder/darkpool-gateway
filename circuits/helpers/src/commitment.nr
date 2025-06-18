@@ -1,0 +1,33 @@
+
+use super::blake3Hasher::black3_hash_to_field;
+use poseidon;
+
+/**
+ * @title CommitmentHasher function
+ * @dev Function for computing commitment hashes, precommitments and nullifier hashes
+ */
+pub fn commitment_hasher(
+    nullifier: Field,          // Nullifier of commitment
+    value: Field,              // Value of commitment
+    label: Field,              // keccak256(address) % SNARK_SCALAR_FIELD
+    secret: Field              // Secret of commitment
+) -> (Field) {          
+    // println(nullifier);
+
+    let precommitment = poseidon::poseidon2::Poseidon2::hash([nullifier, secret], 2);
+    let commitment = poseidon::poseidon2::Poseidon2::hash([value, label, precommitment], 3);
+
+    // println([precommitment, commitment]);
+    (commitment)
+}
+
+
+#[test]
+pub fn test_commitment_hasher() {
+    let nullifier: Field = (1 as u8).into();
+    let secret: Field = (2 as u8).into();
+    let value: Field = (1000000000000000000 as u64).into();
+    let label: Field = (0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97).into();
+    let _commitment = commitment_hasher(nullifier, value, label, secret);
+    println(_commitment);
+}

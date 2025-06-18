@@ -1,0 +1,23 @@
+{
+  "name": "hardhat-project",
+  "version": "1.0.0",
+  "description": "Dark Dex Contracts",
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "deploy:local": "",
+    "node": "hardhat node",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.24.3"
+  },
+  "dependencies": {
+    "hardhat-deploy": "^1.0.3"
+  }
+}
