@@ -46,7 +46,12 @@ library MerkleTreeLib {
             bool isRightChild = (currentIndexInLevel % 2) != 0;
             uint32 siblingIndex = isRightChild ? currentIndexInLevel - 1 : currentIndexInLevel + 1;
 
-            bytes32 siblingNode = self.tree[level][siblingIndex];
+            bytes32 siblingNode;
+            if (siblingIndex < self.tree[level].length) {
+                siblingNode = self.tree[level][siblingIndex];
+            } else {
+                siblingNode = bytes32(0);
+            }
 
             bytes32 parentNode;
             
@@ -63,7 +68,11 @@ library MerkleTreeLib {
             uint32 parentIndexInNextLevel = currentIndexInLevel / 2;
 
             // Ensure the next level's array is long enough
-            self.tree[level + 1][parentIndexInNextLevel] = parentNode;
+            if (parentIndexInNextLevel >= self.tree[level + 1].length) {
+                self.tree[level + 1].push(parentNode);
+            } else {
+                self.tree[level + 1][parentIndexInNextLevel] = parentNode;
+            }
             
 
             currentComputedNode = parentNode;
@@ -97,10 +106,6 @@ library MerkleTreeLib {
             siblings[level] = siblingNode;
             currentIndexInLevel = currentIndexInLevel / 2;
         }
-
         return siblings;
     }
-
-    
-
 }
