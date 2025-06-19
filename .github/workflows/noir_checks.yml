@@ -10,7 +10,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup Noir
-      uses: noir-lang/noir-up@v0.1.0 
+      uses: noir-lang/noirup@v0.1.2 
       with:
         toolchain: nightly 
 
