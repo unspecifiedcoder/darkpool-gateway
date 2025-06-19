@@ -1,0 +1,25 @@
+name: Noir Checks
+
+on: [push]
+
+jobs:
+  noir-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Noir
+      uses: noir-lang/noir-up@v0.1.0 
+      with:
+        toolchain: nightly 
+
+    - name: Check Noir Formatting
+      run: |
+        cd circuits
+        nargo fmt --check
+
+    - name: Run Noir Tests
+      run: |
+        cd circuits
+        nargo test
