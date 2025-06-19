@@ -2,7 +2,6 @@ global MAX_TREE_DEPTH: u32 = 32;
 
 use helpers::{commitment::commitment_hasher, LeanIMTInclusionProof::lean_imt_inclusion_proof};
 
-
 fn main(
     // Public inputs
     withdraw_value: pub Field,
