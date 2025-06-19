@@ -13,10 +13,10 @@ fn main(
     receiver_secretHash: pub Field,
     // could be null
     merkle_root: pub Option<Field>,
-    leaf_index: pub Option<Field>,
     existingNullifier: pub Option<Field>,
     // Private inputs
     label: Field,
+    leaf_index: Option<Field>,
     receiver_secret: Field,
     newNullifier: Field,
     newSecret: Field,
@@ -106,9 +106,9 @@ fn test_main() {
         note_nonce,
         receiver_secretHash,
         Option::some(merkle_root),
-        Option::some(leaf_index),
         Option::some(existingNullifier),
         label,
+        Option::some(leaf_index),
         receiver_secret,
         newNullifier,
         newSecret,

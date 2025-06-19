@@ -2,13 +2,14 @@ global MAX_TREE_DEPTH: u32 = 32;
 
 use helpers::{commitment::commitment_hasher, LeanIMTInclusionProof::lean_imt_inclusion_proof};
 
+
 fn main(
     // Public inputs
     withdraw_value: pub Field,
     merkle_root: pub Field,
-    leaf_index: pub Field,
     existingNullifier: pub Field,
     // Private inputs
+    leaf_index: Field,
     label: Field,
     existingValue: Field,
     existingSecret: Field,
@@ -25,7 +26,7 @@ fn main(
 
     let newCommitment = commitment_hasher(
         newNullifier,
-        existingValue - withdraw_value,
+        existingValue - withdraw_value, // noir checks for underflows
         label,
         newSecret,
     );
@@ -80,8 +81,8 @@ pub fn test_main() {
     let _newCommitment = main(
         withdraw_value,
         merkle_root,
-        leaf_index,
         existingNullifier,
+        leaf_index,
         label,
         existingValue,
         existingSecret,

@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+library ProofLib {
+    struct WithdrawOrTransferParams {
+        bytes honkProof;
+        bytes32[] publicInputs; // [value, merkle_root, leaf_index, nullifier, new_commitment]
+    }
+
+    function value(
+        WithdrawOrTransferParams memory params
+    ) internal pure returns (uint256) {
+        return uint256(params.publicInputs[0]);
+    }
+
+    function merkle_root(
+        WithdrawOrTransferParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[1];
+    }
+
+
+    function nullifier(
+        WithdrawOrTransferParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[3];
+    }
+
+    function new_commitment(
+        WithdrawOrTransferParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[4];
+    }
+
+    struct ClaimParams {
+        bytes honkProof;
+        bytes32[] publicInputs; // [value, note_nonce, receiver_secretHash, option, merkle_root, option, leaf_index, option, existingNullifier, option, new_commitment]
+    }
+
+    function has_prev_commitments(ClaimParams memory params) internal pure returns (bool) {
+        return params.publicInputs[3] != 0;
+    }
+
+    function value(ClaimParams memory params) internal pure returns (uint256) {
+        return uint256(params.publicInputs[0]);
+    }
+
+    function note_nonce(
+        ClaimParams memory params
+    ) internal pure returns (uint256) {
+        return uint256(params.publicInputs[1]);
+    }
+
+    function receiver_secretHash(
+        ClaimParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[2];
+    }
+
+    // index 3 is for Option Enum for Noir! we dont have to use it.
+    function merkle_root(
+        ClaimParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[4];
+    }
+
+    function existingNullifier(
+        ClaimParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[8];
+    }
+
+    function new_commitment(
+        ClaimParams memory params
+    ) internal pure returns (bytes32) {
+        return params.publicInputs[9];
+    }
+}
