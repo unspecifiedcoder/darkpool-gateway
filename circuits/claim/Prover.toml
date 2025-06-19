@@ -1,0 +1,31 @@
+_note_nonce = ""
+claim_value = ""
+label = ""
+newNullifier = ""
+newSecret = ""
+receiver_secret = ""
+receiver_secretHash = ""
+
+[existingNullifier]
+_is_some = ""
+_value = ""
+
+[existingSecret]
+_is_some = ""
+_value = ""
+
+[existingValue]
+_is_some = ""
+_value = ""
+
+[leaf_index]
+_is_some = ""
+_value = ""
+
+[merkle_root]
+_is_some = ""
+_value = ""
+
+[siblings]
+_is_some = ""
+_value = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]

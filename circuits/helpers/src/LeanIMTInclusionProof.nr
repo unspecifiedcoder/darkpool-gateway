@@ -1,11 +1,3 @@
-
-
-// fn print_debug_fields<let size: u32>(fields: [Field; size]) {
-//     for field in fields {
-//         println(field);
-//     }
-// }
-
 /**
  * @title LeanIMTInclusionProof function (Noir equivalent)
  * @dev Function for verifying inclusion proofs in a Lean Incremental Merkle Tree using BLAKE3 hashes.
@@ -16,9 +8,6 @@ pub fn lean_imt_inclusion_proof<let MAX_DEPTH: u32>(
     siblings: [Field; MAX_DEPTH],
 ) -> Field {
     let path_bits_bool: [u1; MAX_DEPTH] = leaf_index.to_le_bits();
-
-    // println("path_bits_bool");
-    // println(path_bits_bool);
 
     // `nodes` array to store computed node values at each level
     // Size is MAX_DEPTH + 1 to store the initial leaf and results of MAX_DEPTH hashing/propagation steps.
@@ -44,16 +33,9 @@ pub fn lean_imt_inclusion_proof<let MAX_DEPTH: u32>(
             0 as Field
         };
 
-        // If sibling is empty (selector is 1), nodes[i+1] = current_node
-        // If sibling is not empty (selector is 0), nodes[i+1] = hashed_pair
         if is_sibling_empty_selector == 1 {
             nodes[i + 1] = current_node;
         } else {
-            // If path_direction_bit is 0, hash(current_node, sibling_node)
-            // If path_direction_bit is 1, hash(sibling_node, current_node)
-            // This selection can be done arithmetically:
-            // value_if_0 * (1 - bit) + value_if_1 * bit
-
             let mut left_input: Field = 0 as Field;
             let mut right_input: Field = 0 as Field;
             if path_direction_bit == 0 {

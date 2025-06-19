@@ -6,9 +6,9 @@ import { Fr } from "@aztec/foundation/fields";
 import { ethers } from "ethers"; // For ethers.parseEther and address handling
 
 const computeWithdrawParams = async () => {
-  const imt = new LeanIMT(8);
+  const imt = new LeanIMT(32);
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 50; i++) {
     let commitment = await commitmentHasherTS(
       BigInt(i),
       BigInt(2 * i),
@@ -20,12 +20,12 @@ const computeWithdrawParams = async () => {
 
   let withdrawValue = ethers.parseEther("0.5");
   let merkleRoot = imt.getRoot();
-  let leafIndex = 5;
-  let existingNullifier = BigInt(5);
+  let leafIndex = 17;
+  let existingNullifier = BigInt(17);
 
   let label = "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97";
   let existingValue = ethers.parseEther("1");
-  let existingSecret = BigInt(10);
+  let existingSecret = BigInt(2n * existingNullifier);
   let newNullifier = BigInt(601);
   let newSecret = BigInt(602);
   let siblings = imt.getPath(leafIndex);
@@ -50,12 +50,15 @@ const computeWithdrawParams = async () => {
     existingValue,
     label
   );
+
+  console.log("Verify commitment", verify_commitment);
+
   const local_verify = await verifyPath(
     verify_commitment,
     leafIndex,
     siblings,
     merkleRoot,
-    8,
+    32,
     new Fr(0n)
   );
   console.log("Local verify", local_verify);
@@ -66,7 +69,7 @@ const computeWithdrawParams = async () => {
     leafIndex,
     siblings,
     merkleRoot,
-    8,
+    32,
     new Fr(0n)
   );
   console.log("Local verify2", local_verify2);
@@ -151,5 +154,5 @@ const computeClaimParams = async () => {
   console.log("New commitment", newCommitment , (existingValue + claimValue).toString(16));
 };
 
-computeClaimParams();
+computeWithdrawParams();
 

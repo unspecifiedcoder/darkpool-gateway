@@ -36,7 +36,8 @@ export class LeanIMT {
     // insert method we add the leaves only when needed, returns index
     public async insert(value: Fr) : Promise<number> {
         const leafIndex = this.tree[0].length;
-        if (leafIndex > 1 << this.MAX_DEPTH) {
+        if (leafIndex > (2 ** this.MAX_DEPTH)) {
+            console.log((2 ** this.MAX_DEPTH), this.MAX_DEPTH, leafIndex);
             throw new Error("Tree is full");
         }
 
@@ -183,8 +184,8 @@ const main = async () => {
     const leaf = imt.tree[0][leafIndex];
     const result = await verifyPath(leaf, leafIndex, siblings, expectedRoot, height, zeroValue);
 
-    console.log("Lean IMT params", leaf, leafIndex, siblings, expectedRoot, height, zeroValue);
-    console.log(result, "with expected root", expectedRoot);
+    // console.log("Lean IMT params", leaf, leafIndex, siblings, expectedRoot, height, zeroValue);
+    // console.log(result, "with expected root", expectedRoot);
  
 };
 

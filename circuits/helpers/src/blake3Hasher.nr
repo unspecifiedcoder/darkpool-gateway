@@ -1,5 +1,4 @@
-use std::{hash::blake3, field::bytes32_to_field};
-
+use std::{field::bytes32_to_field, hash::blake3};
 
 pub fn black3_hash_to_field(inputs: [Field]) -> Field {
     let mut sum = 0;

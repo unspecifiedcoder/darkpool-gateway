@@ -54,14 +54,14 @@ export const commitmentHasherTS = async (nullifier: bigint, secret: bigint, valu
 };
 
 const main = async () => {
-    // const commitment = await commitmentHasherTS(1n, 2n, ethers.parseEther("1"), "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97");
-    // console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
+    const commitment = await commitmentHasherTS(1n, 2n, ethers.parseEther("1"), "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97");
+    console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
     // return commitment;
 
-    let value1 = 0x2079041f0d6becd26db3ec659c54f60464243d86c3982978f1217a5f1413ed3an;
-    let value2 = 0x08146641a4e30689442ecd270a7efef725bdb3036bf3d837dff683161a455de1n;
-    let hash = await poseidon2Hash([toFr(value1), toFr(value2)]);
-    console.log("Hash (hex):", hash.toBuffer().toString('hex'));
+    // let value1 = 0x2079041f0d6becd26db3ec659c54f60464243d86c3982978f1217a5f1413ed3an;
+    // let value2 = 0x08146641a4e30689442ecd270a7efef725bdb3036bf3d837dff683161a455de1n;
+    // let hash = await poseidon2Hash([toFr(value1), toFr(value2)]);
+    // console.log("Hash (hex):", hash.toBuffer().toString('hex'));
 };
 
 main().then(() => console.log("done"))

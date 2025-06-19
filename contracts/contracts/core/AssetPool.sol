@@ -1,16 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IERC20Minimal} from "../interfaces/IERC20Minimal.sol";
-import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {MerkleTreeLibZK} from "../libraries/MerkleTreeLibZK.sol";
-import {IAssetPool} from "../interfaces/IAssetPool.sol";
-import {IVerifier} from "../interfaces/IVerifier.sol"; // Using generic, replace with actual
-import {Governable} from "../utils/Governable.sol"; // For owner of EntryPoint to manage this
 
-// Asset types
-uint8 internal constant ASSET_TYPE_ETH = 0;
-uint8 internal constant ASSET_TYPE_ERC20 = 1;
 
 /**
  * @title AssetPool

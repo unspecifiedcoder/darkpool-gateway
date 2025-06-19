@@ -1,8 +1,7 @@
 global MAX_TREE_DEPTH: u32 = 32;
 
+use helpers::{commitment::commitment_hasher, LeanIMTInclusionProof::lean_imt_inclusion_proof};
 use poseidon;
-use helpers::{ commitment::commitment_hasher, LeanIMTInclusionProof::lean_imt_inclusion_proof};
-
 
 // Claims funds from one of existing notes, note_nonce is used to prevent replay attacks
 // if existing nullifiers and secrets are null then we can assume user is new to system and we can create a new commitment.
@@ -29,28 +28,29 @@ fn main(
     assert(receiver_secretHash == poseidon::poseidon2::Poseidon2::hash([receiver_secret], 1));
 
     let mut final_balance = claim_value;
-    if existingNullifier.is_some() {
-        let existingCommitment = commitment_hasher(
-            existingNullifier.expect(f"existingNullifier is none"),
-            existingValue.expect(f"existingValue is none"),
-            label,
-            existingSecret.expect(f"existingSecret is none"),
-        );
-        let computed_merkle_root = lean_imt_inclusion_proof(
-            existingCommitment,
-            leaf_index.expect(f"leaf_index is none"),
-            siblings.expect(f"siblings is none"),
-        );
+    if (existingNullifier.is_some() | (existingNullifier.expect(f"existingNullifier is none") != 0))
+         {
+            let existingCommitment = commitment_hasher(
+                existingNullifier.expect(f"existingNullifier is none"),
+                existingValue.expect(f"existingValue is none"),
+                label,
+                existingSecret.expect(f"existingSecret is none"),
+            );
+            let computed_merkle_root = lean_imt_inclusion_proof(
+                existingCommitment,
+                leaf_index.expect(f"leaf_index is none"),
+                siblings.expect(f"siblings is none"),
+            );
 
-        assert_eq(computed_merkle_root, merkle_root.expect(f"merkle_root is none"));
+            assert_eq(computed_merkle_root, merkle_root.expect(f"merkle_root is none"));
 
-        final_balance += existingValue.expect(f"existingValue is none");
+            final_balance += existingValue.expect(f"existingValue is none");
+        }
+
+        let newCommitment = commitment_hasher(newNullifier, final_balance, label, newSecret);
+
+        newCommitment
     }
-
-    let newCommitment = commitment_hasher(newNullifier, final_balance, label, newSecret);
-
-    newCommitment
-}
 
 fn low_depth_main(
     // Public inputs
@@ -71,7 +71,7 @@ fn low_depth_main(
     existingSecret: Option<Field>,
     siblings: Option<[Field; 8]>,
 ) -> Field {
-    assert(receiver_secretHash ==  poseidon::poseidon2::Poseidon2::hash([receiver_secret], 1));
+    assert(receiver_secretHash == poseidon::poseidon2::Poseidon2::hash([receiver_secret], 1));
 
     let mut final_balance = claim_value;
     if existingNullifier.is_some() {
@@ -119,7 +119,7 @@ fn test_main() {
         0x0000000000000000000000000000000000000000000000000000000000000000,
         0x0000000000000000000000000000000000000000000000000000000000000000,
         0x0000000000000000000000000000000000000000000000000000000000000000,
-        0x0000000000000000000000000000000000000000000000000000000000000000
+        0x0000000000000000000000000000000000000000000000000000000000000000,
     ];
 
     let main_result = low_depth_main(
