@@ -12,7 +12,10 @@ jobs:
     - name: Setup Noir
       uses: noir-lang/noirup@v0.1.2 
       with:
-        toolchain: nightly 
+        toolchain: '1.0.0-beta.6'
+
+    - name: Show Noir version
+      run: nargo --version
 
     - name: Check Noir Formatting
       run: |
@@ -22,4 +25,4 @@ jobs:
     - name: Run Noir Tests
       run: |
         cd circuits
-        nargo test
+        nargo test # nargo test usually outputs detailed failure info by default
