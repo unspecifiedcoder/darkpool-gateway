@@ -52,57 +52,12 @@ fn main(
         newCommitment
     }
 
-fn low_depth_main(
-    // Public inputs
-    claim_value: Field,
-    _note_nonce: Field,
-    receiver_secretHash: Field,
-    // could be null
-    merkle_root: Option<Field>,
-    leaf_index: Option<Field>,
-    existingNullifier: Option<Field>,
-    // Private inputs
-    label: Field,
-    receiver_secret: Field,
-    newNullifier: Field,
-    newSecret: Field,
-    // could be null
-    existingValue: Option<Field>,
-    existingSecret: Option<Field>,
-    siblings: Option<[Field; 8]>,
-) -> Field {
-    assert(receiver_secretHash == poseidon::poseidon2::Poseidon2::hash([receiver_secret], 1));
-
-    let mut final_balance = claim_value;
-    if existingNullifier.is_some() {
-        let existingCommitment = commitment_hasher(
-            existingNullifier.expect(f"existingNullifier is none"),
-            existingValue.expect(f"existingValue is none"),
-            label,
-            existingSecret.expect(f"existingSecret is none"),
-        );
-        let computed_merkle_root = lean_imt_inclusion_proof(
-            existingCommitment,
-            leaf_index.expect(f"leaf_index is none"),
-            siblings.expect(f"siblings is none"),
-        );
-
-        assert_eq(computed_merkle_root, merkle_root.expect(f"merkle_root is none"));
-
-        final_balance += existingValue.expect(f"existingValue is none");
-    }
-
-    let newCommitment = commitment_hasher(newNullifier, final_balance, label, newSecret);
-
-    newCommitment
-}
-
 #[test]
 fn test_main() {
     let claim_value = 500000000000000000;
     let note_nonce = 12345;
     let receiver_secretHash = 0x29d532dfd7450897f3a457becb789ab8aaa85aa057c39805a609471519b68a16;
-    let merkle_root = 0x29da4e4ec147bbf7985be365959ba23ed1183d97bfe8c72a67867c7b76d6a20f;
+    let merkle_root = 0x0de6f3accefd10fa9b4b051932b99164ed2a6c01b6e9b87c8780210106181625;
     let leaf_index = 5;
     let existingNullifier = 5;
     let label = 0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97;
@@ -111,10 +66,34 @@ fn test_main() {
     let newSecret = 602;
     let existingValue = 1000000000000000000;
     let existingSecret = 10;
-    let siblings: [Field; 8] = [
+    let siblings: [Field; MAX_TREE_DEPTH] = [
         0x01a266bea8075ed4764fca5aa9b814960c483ccd158250bd39be32cf7601f85e,
         0x08d3fc1b356a70549258380c0a14fa88e867fae608de826c52e2dd4ac6925991,
         0x10f1429fb1ead8599a0983333927e3808984c2adbf461680fba56df177bd716b,
+        0x13742416d4952f1d797784b0d35666a4a7a571b15216e4666a50413f1359c379,
+        0x157c16f3a85aab8894515d346701cf48819a872da5da00c624b70da5d1d52799,
+        0x2ba1a5a86b4ab6cb6fa65b4a9a467aa357215c3579a5440fb31f535578585d77,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
+        0x0000000000000000000000000000000000000000000000000000000000000000,
         0x0000000000000000000000000000000000000000000000000000000000000000,
         0x0000000000000000000000000000000000000000000000000000000000000000,
         0x0000000000000000000000000000000000000000000000000000000000000000,
@@ -122,7 +101,7 @@ fn test_main() {
         0x0000000000000000000000000000000000000000000000000000000000000000,
     ];
 
-    let main_result = low_depth_main(
+    let main_result = main(
         claim_value,
         note_nonce,
         receiver_secretHash,

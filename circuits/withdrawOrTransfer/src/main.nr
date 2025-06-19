@@ -89,4 +89,6 @@ pub fn test_main() {
         newSecret,
         siblings,
     );
+
+    assert(_newCommitment == 0x21adcd4c0b79b79f4564706cce1f55dad4f3211aa1d4b533ada3f4b1edbd41d6);
 }

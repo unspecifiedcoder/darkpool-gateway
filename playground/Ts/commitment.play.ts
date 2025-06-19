@@ -45,17 +45,17 @@ export const commitmentHasherTS = async (nullifier: bigint, secret: bigint, valu
     // console.log("  Label:    ", labelFr.toString(), `(from ${labelAddr})`);
     
     const precommitment = await poseidon2Hash([nullifierFr, secretFr]);
-    console.log("Precommitment (hex):", precommitment.toBuffer().toString('hex'));
+    // console.log("Precommitment (hex):", precommitment.toBuffer().toString('hex'));
 
     const commitment = await poseidon2Hash([valueFr, labelFr, precommitment]);
-    console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
+    // console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
     // console.log("--- End Commitment Hasher ---");
     return commitment;
 };
 
 const main = async () => {
     const commitment = await commitmentHasherTS(1n, 2n, ethers.parseEther("1"), "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97");
-    console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
+    // console.log("Commitment (hex):   ", commitment.toBuffer().toString('hex'));
     // return commitment;
 
     // let value1 = 0x2079041f0d6becd26db3ec659c54f60464243d86c3982978f1217a5f1413ed3an;

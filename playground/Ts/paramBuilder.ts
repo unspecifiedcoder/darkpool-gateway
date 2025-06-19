@@ -84,9 +84,9 @@ const computeWithdrawParams = async () => {
 };
 
 const computeClaimParams = async () => {
-  const imt = new LeanIMT(8);
+  const imt = new LeanIMT(32);
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 50; i++) {
     let commitment = await commitmentHasherTS(
       BigInt(i),
       BigInt(2 * i),
@@ -140,7 +140,7 @@ const computeClaimParams = async () => {
     leafIndex,
     siblings,
     merkleRoot,
-    8,
+    32,
     new Fr(0n)
   );
   console.log("Local verify", local_verify);
@@ -154,5 +154,5 @@ const computeClaimParams = async () => {
   console.log("New commitment", newCommitment , (existingValue + claimValue).toString(16));
 };
 
-computeWithdrawParams();
+computeClaimParams();
 
