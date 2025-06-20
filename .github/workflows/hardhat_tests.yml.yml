@@ -1,0 +1,29 @@
+name: Hardhat Tests
+
+# Controls when the workflow will run
+on: [push]
+
+jobs:
+  test-contracts:
+    name: Run Hardhat Tests
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x' # Specify your project's Node.js version (e.g., 18.x, 20.x)
+          cache: 'npm' # Enable caching for npm dependencies
+          cache-dependency-path: contracts/yarn.lock 
+
+      - name: Install dependencies in contracts folder
+    
+        working-directory: ./contracts
+        run: yarn install --frozen-lockfile
+
+      - name: Run Hardhat tests
+        working-directory: ./contracts 
+        run: npx hardhat test
