@@ -17,7 +17,7 @@ const config: HardhatUserConfig = {
             enabled: true,
             runs: 200, // Adjust 'runs' based on how often functions are expected to be called
           },
-          viaIR: true, 
+          // viaIR: true, 
         },
       }
     ],

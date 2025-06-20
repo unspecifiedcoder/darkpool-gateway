@@ -15,7 +15,7 @@ interface IAssetPool {
     function deposit(
         uint256 amount,
         bytes32 precommitment
-    ) external payable virtual returns (uint32 leafIndex);
+    ) external payable returns (uint32 leafIndex);
 
     function withdraw(
         ProofLib.WithdrawOrTransferParams memory params
