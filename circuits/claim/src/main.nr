@@ -12,45 +12,44 @@ fn main(
     _note_nonce: pub Field,
     receiver_secretHash: pub Field,
     // could be null
-    merkle_root: pub Option<Field>,
-    existingNullifier: pub Option<Field>,
+    merkle_root: pub Field,
+    existingNullifier: pub Field,
     // Private inputs
     label: Field,
-    leaf_index: Option<Field>,
+    leaf_index: Field,
     receiver_secret: Field,
     newNullifier: Field,
     newSecret: Field,
     // could be null
-    existingValue: Option<Field>,
-    existingSecret: Option<Field>,
-    siblings: Option<[Field; MAX_TREE_DEPTH]>,
+    existingValue: Field,
+    existingSecret: Field,
+    siblings: [Field; MAX_TREE_DEPTH],
 ) -> pub Field {
     assert(receiver_secretHash == poseidon::poseidon2::Poseidon2::hash([receiver_secret], 1));
 
     let mut final_balance = claim_value;
-    if (existingNullifier.is_some() | (existingNullifier.expect(f"existingNullifier is none") != 0))
-         {
-            let existingCommitment = commitment_hasher(
-                existingNullifier.expect(f"existingNullifier is none"),
-                existingValue.expect(f"existingValue is none"),
-                label,
-                existingSecret.expect(f"existingSecret is none"),
-            );
-            let computed_merkle_root = lean_imt_inclusion_proof(
-                existingCommitment,
-                leaf_index.expect(f"leaf_index is none"),
-                siblings.expect(f"siblings is none"),
-            );
+    if (existingNullifier != 0) {
+        let existingCommitment = commitment_hasher(
+            existingNullifier,
+            existingValue,
+            label,
+            existingSecret,
+        );
+        let computed_merkle_root = lean_imt_inclusion_proof(
+            existingCommitment,
+            leaf_index,
+            siblings,
+        );
 
-            assert_eq(computed_merkle_root, merkle_root.expect(f"merkle_root is none"));
+        assert_eq(computed_merkle_root, merkle_root);
 
-            final_balance += existingValue.expect(f"existingValue is none");
-        }
-
-        let newCommitment = commitment_hasher(newNullifier, final_balance, label, newSecret);
-
-        newCommitment
+        final_balance += existingValue;
     }
+
+    let newCommitment = commitment_hasher(newNullifier, final_balance, label, newSecret);
+
+    newCommitment
+}
 
 #[test]
 fn test_main() {
@@ -105,16 +104,16 @@ fn test_main() {
         claim_value,
         note_nonce,
         receiver_secretHash,
-        Option::some(merkle_root),
-        Option::some(existingNullifier),
+        merkle_root,
+        existingNullifier,
         label,
-        Option::some(leaf_index),
+        leaf_index,
         receiver_secret,
         newNullifier,
         newSecret,
-        Option::some(existingValue),
-        Option::some(existingSecret),
-        Option::some(siblings),
+        existingValue,
+        existingSecret,
+        siblings,
     );
 
     assert(main_result == 0x29159b8cb187abd88dbc88851d73b10f8e898dd814d164b3da914959a018bb96);

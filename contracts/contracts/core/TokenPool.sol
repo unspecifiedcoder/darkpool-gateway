@@ -68,7 +68,7 @@ contract TokenPool is IAssetPool {
 
     modifier validate_claim_proof(ProofLib.ClaimParams memory params) {
         require(
-            params.publicInputs.length == 8,
+            params.publicInputs.length == 6,
             "AssetPool: Invalid claim proof"
         );
         require(
@@ -162,12 +162,12 @@ contract TokenPool is IAssetPool {
         notes[noteID] = Note({
             value: params.value(),
             receiverHash: receiverHash,
-            claimedBlockNumber: block.number
+            claimedBlockNumber: 0
         });
+        emit NoteCreated(receiverHash, params.value(), noteNonce);
 
         // increment noteNonce
         noteNonce++;
-
         return (0);
     }
 

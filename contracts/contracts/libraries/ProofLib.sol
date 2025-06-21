@@ -23,13 +23,13 @@ library ProofLib {
     function nullifier(
         WithdrawOrTransferParams memory params
     ) internal pure returns (bytes32) {
-        return params.publicInputs[3];
+        return params.publicInputs[2];
     }
 
     function new_commitment(
         WithdrawOrTransferParams memory params
     ) internal pure returns (bytes32) {
-        return params.publicInputs[4];
+        return params.publicInputs[3];
     }
 
     struct ClaimParams {
@@ -38,7 +38,7 @@ library ProofLib {
     }
 
     function has_prev_commitments(ClaimParams memory params) internal pure returns (bool) {
-        return params.publicInputs[3] != 0;
+        return  params.publicInputs[4] != bytes32(0);
     }
 
     function value(ClaimParams memory params) internal pure returns (uint256) {
@@ -57,22 +57,21 @@ library ProofLib {
         return params.publicInputs[2];
     }
 
-    // index 3 is for Option Enum for Noir! we dont have to use it.
     function merkle_root(
         ClaimParams memory params
     ) internal pure returns (bytes32) {
-        return params.publicInputs[4];
+        return params.publicInputs[3];
     }
 
     function existingNullifier(
         ClaimParams memory params
     ) internal pure returns (bytes32) {
-        return params.publicInputs[8];
+        return params.publicInputs[4];
     }
 
     function new_commitment(
         ClaimParams memory params
     ) internal pure returns (bytes32) {
-        return params.publicInputs[9];
+        return params.publicInputs[5];
     }
 }

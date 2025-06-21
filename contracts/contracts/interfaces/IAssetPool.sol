@@ -9,6 +9,10 @@ interface IAssetPool {
     
     // --- Events ---
     event CommitmentInserted(bytes32 indexed leaf, uint32 indexed leafIndex, bytes32 newRoot);
+
+    event NoteCreated(bytes32 indexed receiverHash, uint256 amount, uint256 noteNonce);
+    event NoteClaimed(bytes32 indexed noteID, uint256 amount);
+
     
 
     // --- State Modifying Functions (callable primarily by EntryPoint) ---

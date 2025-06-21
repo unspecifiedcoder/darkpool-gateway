@@ -30,7 +30,7 @@ export function addressToFr(address: string): Fr {
 }
 
 // --- Existing Commitment Hasher (Adapted) ---
-export const commitmentHasherTS = async (nullifier: bigint, secret: bigint, value: bigint, labelAddr: string) => {
+export const calculateSolidityCommitment = async (nullifier: bigint, secret: bigint, value: bigint, labelAddr: string) => {
 
     const nullifierFr = toFr(nullifier);
     const secretFr = toFr(secret);

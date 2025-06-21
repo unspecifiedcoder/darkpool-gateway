@@ -7,7 +7,7 @@ use poseidon;
 pub fn commitment_hasher(
     nullifier: Field, // Nullifier of commitment
     value: Field, // Value of commitment
-    label: Field, // keccak256(address) % SNARK_SCALAR_FIELD
+    label: Field,
     secret: Field, // Secret of commitment
 ) -> (Field) {
     // println(nullifier);
