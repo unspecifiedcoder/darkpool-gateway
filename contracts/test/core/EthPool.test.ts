@@ -880,8 +880,8 @@ describe("EthPool Contract Tests", function () {
   });
 
   describe("View Functions", function () {
-    let tsTree: LeanIMT;
     it("getPath should return siblings for a valid leafIndex", async function () {
+      let tsTree: LeanIMT;
       tsTree = new LeanIMT(MAX_TREE_DEPTH);
 
       const depositAmount = ethers.parseEther("1");

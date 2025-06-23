@@ -29,17 +29,10 @@ fn main(
 
     let mut final_balance = claim_value;
     if (existingNullifier != 0) {
-        let existingCommitment = commitment_hasher(
-            existingNullifier,
-            existingValue,
-            label,
-            existingSecret,
-        );
-        let computed_merkle_root = lean_imt_inclusion_proof(
-            existingCommitment,
-            leaf_index,
-            siblings,
-        );
+        let existingCommitment =
+            commitment_hasher(existingNullifier, existingValue, label, existingSecret);
+        let computed_merkle_root =
+            lean_imt_inclusion_proof(existingCommitment, leaf_index, siblings);
 
         assert_eq(computed_merkle_root, merkle_root);
 
