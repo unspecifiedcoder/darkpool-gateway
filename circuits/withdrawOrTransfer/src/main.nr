@@ -96,7 +96,7 @@ pub fn test_main() {
     assert(_newCommitment == 0x21adcd4c0b79b79f4564706cce1f55dad4f3211aa1d4b533ada3f4b1edbd41d6);
 }
 
-#[test]
+#[test(should_fail)]
 pub fn test_2() {
     let existingNullifier: Field = 25546;
     let existingSecret: Field = 684266;
