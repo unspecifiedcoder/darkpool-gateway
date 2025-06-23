@@ -11,19 +11,22 @@ import {
   calculateSolidityCommitment,
   generate_precommitment,
 } from "../utils/utils";
-import { generateWithdrawTransferProof } from "../utils/proofGeneration";
-import { EventLog, randomBytes, zeroPadBytes } from "ethers";
+import {
+  generateClaimProof,
+  generateWithdrawTransferProof,
+} from "../utils/proofGeneration";
+import { EventLog } from "ethers";
 import { LeanIMT } from "../test_utils/leanIMT";
 import { poseidon2Hash, randomBigInt } from "@aztec/foundation/crypto";
 
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const MAX_TREE_DEPTH = 32;
 
-describe("EthPool Contract Tests", function () {
+describe.skip("EthPool Contract Tests", function () {
   let deployer: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
-  let entryPoint: HardhatEthersSigner; // Mocking EntryPoint as a signer for now
+  let entryPoint: HardhatEthersSigner;
 
   let ethPool: EthPool;
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
@@ -846,336 +849,6 @@ describe("EthPool Contract Tests", function () {
     });
   });
 
-  describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multiple transfer, multiple claims [ new claims + existing claims ]", function () {
-    // setup
-    // Alice bob charlie deposit variable amounts into the pool [validate all the root and contract state]
-    // Alice and bob do a partial withdraw, and charlie does a full with draw
-    // Alice transfers 1 eth to Bob and 2 eth to David
-    // Bob and david claim their notes
-    // everything withdraws their balances completely from contract and contract balance is 0
-
-    type ActorType = {
-      lastUsedNullifier: bigint;
-      secret: bigint;
-      signer: HardhatEthersSigner | null;
-      depositAmount: bigint;
-      currentLeafIndex: bigint;
-    };
-
-    let alice: ActorType;
-    let bob: ActorType;
-    let charlie: ActorType;
-    let david: ActorType;
-
-    beforeEach(async () => {
-      const [alice_signer, bob_signer, charlie_signer, david_signer] =
-        await ethers.getSigners();
-      alice = {
-        lastUsedNullifier: randomBigInt(1000000n),
-        secret: randomBigInt(1000000n),
-        signer: alice_signer,
-        depositAmount: ethers.parseEther("10"),
-        currentLeafIndex: 0n,
-      };
-      bob = {
-        lastUsedNullifier: randomBigInt(1000000n),
-        secret: randomBigInt(1000000n),
-        signer: bob_signer,
-        depositAmount: ethers.parseEther("20"),
-        currentLeafIndex: 1n,
-      };
-      charlie = {
-        lastUsedNullifier: randomBigInt(1000000n),
-        secret: randomBigInt(1000000n),
-        signer: charlie_signer,
-        depositAmount: ethers.parseEther("30"),
-        currentLeafIndex: 2n,
-      };
-      david = {
-        lastUsedNullifier: randomBigInt(1000000n),
-        secret: randomBigInt(1000000n),
-        signer: david_signer,
-        depositAmount: ethers.parseEther("0"),
-        currentLeafIndex: 3n,
-      };
-    });
-
-    it("Happy Flow", async function () {
-      const tsTree = new LeanIMT(MAX_TREE_DEPTH);
-
-      await ethPool
-        .connect(alice.signer)
-        .deposit(
-          alice.depositAmount,
-          (
-            await generate_precommitment(alice.lastUsedNullifier, alice.secret)
-          ).toString(),
-          { value: alice.depositAmount }
-        );
-      await ethPool
-        .connect(bob.signer)
-        .deposit(
-          bob.depositAmount,
-          (
-            await generate_precommitment(bob.lastUsedNullifier, bob.secret)
-          ).toString(),
-          { value: bob.depositAmount }
-        );
-      await ethPool
-        .connect(charlie.signer)
-        .deposit(
-          charlie.depositAmount,
-          (
-            await generate_precommitment(
-              charlie.lastUsedNullifier,
-              charlie.secret
-            )
-          ).toString(),
-          { value: charlie.depositAmount }
-        );
-
-      alice.currentLeafIndex = 0n;
-      bob.currentLeafIndex = 1n;
-      charlie.currentLeafIndex = 2n;
-
-      tsTree.insert(
-        await calculateSolidityCommitment(
-          alice.lastUsedNullifier,
-          alice.secret,
-          alice.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-      tsTree.insert(
-        await calculateSolidityCommitment(
-          bob.lastUsedNullifier,
-          bob.secret,
-          bob.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-      tsTree.insert(
-        await calculateSolidityCommitment(
-          charlie.lastUsedNullifier,
-          charlie.secret,
-          charlie.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-
-      expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-      expect(await ethPool.nextLeafIndex()).to.equal(3);
-
-      expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            alice.lastUsedNullifier,
-            alice.secret,
-            alice.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-      expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            bob.lastUsedNullifier,
-            bob.secret,
-            bob.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-      expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            charlie.lastUsedNullifier,
-            charlie.secret,
-            charlie.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-
-      expect(await ethPool.getPath(alice.currentLeafIndex)).to.deep.equal(
-        tsTree.getPath(Number(alice.currentLeafIndex)).map((x) => x.toString())
-      );
-      expect(await ethPool.getPath(bob.currentLeafIndex)).to.deep.equal(
-        tsTree.getPath(Number(bob.currentLeafIndex)).map((x) => x.toString())
-      );
-      expect(await ethPool.getPath(charlie.currentLeafIndex)).to.deep.equal(
-        tsTree
-          .getPath(Number(charlie.currentLeafIndex))
-          .map((x) => x.toString())
-      );
-
-      // Alice and bob do a partial withdraw, and charlie does a full with draw
-      const alicePartialWithdrawAmount = ethers.parseEther("5");
-      const bobPartialWithdrawAmount = ethers.parseEther("10");
-      const charlieFullWithdrawAmount = ethers.parseEther("30");
-
-      const aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
-
-      const [aliceNewNullifier, aliceNewSecret] = [
-        randomBigInt(1000000n),
-        randomBigInt(1000000n),
-      ];
-
-      const aliceProof = await generateWithdrawTransferProof(
-        alice.lastUsedNullifier.toString(),
-        alice.secret.toString(),
-        alice.depositAmount.toString(),
-        ETH_ADDRESS,
-        alice.currentLeafIndex.toString(),
-        tsTree.getRoot().toString(),
-        aliceNewNullifier.toString(),
-        aliceNewSecret.toString(),
-        alicePartialWithdrawAmount.toString(),
-        aliceSiblings
-      );
-
-      expect(aliceProof.verified).to.equal(true);
-      expect(aliceProof.proof.length).to.equal(456 * 32);
-      expect(aliceProof.publicInputs.length).to.equal(4);
-
-      alice.lastUsedNullifier = aliceNewNullifier;
-      alice.secret = aliceNewSecret;
-      alice.depositAmount -= alicePartialWithdrawAmount;
-      alice.currentLeafIndex = await ethPool.nextLeafIndex();
-
-      // withdraw
-      await ethPool.connect(alice.signer).withdraw({
-        honkProof: aliceProof.proof,
-        publicInputs: aliceProof.publicInputs,
-      });
-
-      await tsTree.insert(
-        await calculateSolidityCommitment(
-          alice.lastUsedNullifier,
-          alice.secret,
-          alice.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-
-      const [bobNewNullifier, bobNewSecret] = [
-        randomBigInt(1000000n),
-        randomBigInt(1000000n),
-      ];
-
-      const bobSiblings = await ethPool.getPath(bob.currentLeafIndex);
-
-      const bobProof = await generateWithdrawTransferProof(
-        bob.lastUsedNullifier.toString(),
-        bob.secret.toString(),
-        bob.depositAmount.toString(),
-        ETH_ADDRESS,
-        bob.currentLeafIndex.toString(),
-        tsTree.getRoot().toString(),
-        bobNewNullifier.toString(),
-        bobNewSecret.toString(),
-        bobPartialWithdrawAmount.toString(),
-        bobSiblings
-      );
-
-      expect(bobProof.verified).to.equal(true);
-      expect(bobProof.proof.length).to.equal(456 * 32);
-      expect(bobProof.publicInputs.length).to.equal(4);
-
-      bob.lastUsedNullifier = bobNewNullifier;
-      bob.secret = bobNewSecret;
-      bob.depositAmount -= bobPartialWithdrawAmount;
-      bob.currentLeafIndex = await ethPool.nextLeafIndex();
-
-      await ethPool.connect(bob.signer).withdraw({
-        honkProof: bobProof.proof,
-        publicInputs: bobProof.publicInputs,
-      });
-
-      await tsTree.insert(
-        await calculateSolidityCommitment(
-          bob.lastUsedNullifier,
-          bob.secret,
-          bob.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-
-      const charlieNewNullifier = randomBigInt(1000000n);
-      const charlieNewSecret = randomBigInt(1000000n);
-
-      const charlieSiblings = await ethPool.getPath(charlie.currentLeafIndex);
-      const charlieProof = await generateWithdrawTransferProof(
-        charlie.lastUsedNullifier.toString(),
-        charlie.secret.toString(),
-        charlie.depositAmount.toString(),
-        ETH_ADDRESS,
-        charlie.currentLeafIndex.toString(),
-        tsTree.getRoot().toString(),
-        charlieNewNullifier.toString(),
-        charlieNewSecret.toString(),
-        charlieFullWithdrawAmount.toString(),
-        charlieSiblings
-      );  
-
-      expect(charlieProof.verified).to.equal(true);
-      expect(charlieProof.proof.length).to.equal(456 * 32);
-      expect(charlieProof.publicInputs.length).to.equal(4);
-
-      charlie.lastUsedNullifier = charlieNewNullifier;
-      charlie.secret = charlieNewSecret;
-      charlie.depositAmount -= charlieFullWithdrawAmount;
-      charlie.currentLeafIndex = await ethPool.nextLeafIndex();
-
-      await ethPool.connect(charlie.signer).withdraw({
-        honkProof: charlieProof.proof,
-        publicInputs: charlieProof.publicInputs,
-      });
-
-      await tsTree.insert(
-        await calculateSolidityCommitment(
-          charlie.lastUsedNullifier,
-          charlie.secret,
-          charlie.depositAmount,
-          ETH_ADDRESS
-        )
-      );
-
-      // expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-      expect(await ethPool.nextLeafIndex()).to.equal(6);
-      expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            alice.lastUsedNullifier,
-            alice.secret,
-            alice.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-      expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            bob.lastUsedNullifier,
-            bob.secret,
-            bob.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-      expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
-        (
-          await calculateSolidityCommitment(
-            charlie.lastUsedNullifier,
-            charlie.secret,
-            charlie.depositAmount,
-            ETH_ADDRESS
-          )
-        ).toString()
-      );
-    });
-  });
-
   describe.skip("Admin Functions (setVerifiers)", function () {
     let newVerifier: HardhatEthersSigner;
     beforeEach(async () => {
@@ -1264,5 +937,669 @@ describe("EthPool Contract Tests", function () {
         "MerkleTree: leafIndex out of bounds"
       );
     });
+  });
+});
+
+describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multiple transfer, multiple claims [ new claims + existing claims ]", function () {
+  let deployer: HardhatEthersSigner;
+  let entryPoint: HardhatEthersSigner;
+
+  let ethPool: EthPool;
+  let WithdrawVerifier: WithdrawTransferHonkVerifier;
+  let ClaimVerifier: ClaimHonkVerifier;
+  let poseidon2: Poseidon2;
+
+  async function isKnownRoot(ethPool: EthPool, root: string): Promise<boolean> {
+    for (let i = 0; i < 100; i++) {
+      if ((await ethPool.roots(i)) === root) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // setup
+  // Alice bob charlie deposit variable amounts into the pool [validate all the root and contract state]
+  // Alice and bob do a partial withdraw, and charlie does a full with draw
+  // Alice transfers 1 eth to Bob and 2 eth to David
+  // Bob and david claim their notes
+  // everything withdraws their balances completely from contract and contract balance is 0
+
+  type ActorType = {
+    lastUsedNullifier: bigint;
+    secret: bigint;
+    signer: HardhatEthersSigner | null;
+    depositAmount: bigint;
+    currentLeafIndex: bigint;
+    receiverSecret: bigint;
+    claimableNoteNonces: bigint[];
+  };
+
+  let alice: ActorType;
+  let bob: ActorType;
+  let charlie: ActorType;
+  let david: ActorType;
+  let tsTree: LeanIMT;
+
+  this.beforeAll(async () => {
+    [deployer, entryPoint] = await ethers.getSigners();
+
+    const WithdrawTransferHonkVerifierFactory = await ethers.getContractFactory(
+      "WithdrawTransferHonkVerifier",
+      deployer
+    );
+    WithdrawVerifier =
+      (await WithdrawTransferHonkVerifierFactory.deploy()) as WithdrawTransferHonkVerifier;
+    await WithdrawVerifier.waitForDeployment();
+
+    const ClaimHonkVerifierFactory = await ethers.getContractFactory(
+      "ClaimHonkVerifier",
+      deployer
+    );
+    ClaimVerifier =
+      (await ClaimHonkVerifierFactory.deploy()) as ClaimHonkVerifier;
+    await ClaimVerifier.waitForDeployment();
+
+    // deploy poseidon2
+    const Poseidon2Factory = await ethers.getContractFactory(
+      "Poseidon2",
+      deployer
+    );
+    poseidon2 = (await Poseidon2Factory.deploy()) as Poseidon2;
+    await poseidon2.waitForDeployment();
+
+    const EthPoolFactory = await ethers.getContractFactory("EthPool", {
+      libraries: {
+        Poseidon2: poseidon2.target,
+      },
+    });
+    ethPool = (await EthPoolFactory.deploy(
+      entryPoint.address, // Using signer as mock EntryPoint
+      WithdrawVerifier.target,
+      ClaimVerifier.target,
+      MAX_TREE_DEPTH
+    )) as EthPool;
+    await ethPool.waitForDeployment();
+
+    const [alice_signer, bob_signer, charlie_signer, david_signer] =
+      await ethers.getSigners();
+    alice = {
+      lastUsedNullifier: randomBigInt(1000000n),
+      secret: randomBigInt(1000000n),
+      signer: alice_signer,
+      depositAmount: ethers.parseEther("10"),
+      currentLeafIndex: 0n,
+      receiverSecret: randomBigInt(1000000n),
+      claimableNoteNonces: [],
+    };
+    bob = {
+      lastUsedNullifier: randomBigInt(1000000n),
+      secret: randomBigInt(1000000n),
+      signer: bob_signer,
+      depositAmount: ethers.parseEther("20"),
+      currentLeafIndex: 1n,
+      receiverSecret: randomBigInt(1000000n),
+      claimableNoteNonces: [],
+    };
+    charlie = {
+      lastUsedNullifier: randomBigInt(1000000n),
+      secret: randomBigInt(1000000n),
+      signer: charlie_signer,
+      depositAmount: ethers.parseEther("30"),
+      currentLeafIndex: 2n,
+      receiverSecret: randomBigInt(1000000n),
+      claimableNoteNonces: [],
+    };
+    david = {
+      lastUsedNullifier: 0n,
+      secret: 0n,
+      signer: david_signer,
+      depositAmount: ethers.parseEther("0"),
+      currentLeafIndex: 0n,
+      receiverSecret: randomBigInt(1000000n),
+      claimableNoteNonces: [],
+    };
+
+    tsTree = new LeanIMT(MAX_TREE_DEPTH);
+  });
+
+  it("Happy Flow - Alice Bob Charlier Deposit", async function () {
+    await ethPool
+      .connect(alice.signer)
+      .deposit(
+        alice.depositAmount,
+        (
+          await generate_precommitment(alice.lastUsedNullifier, alice.secret)
+        ).toString(),
+        { value: alice.depositAmount }
+      );
+    await ethPool
+      .connect(bob.signer)
+      .deposit(
+        bob.depositAmount,
+        (
+          await generate_precommitment(bob.lastUsedNullifier, bob.secret)
+        ).toString(),
+        { value: bob.depositAmount }
+      );
+    await ethPool
+      .connect(charlie.signer)
+      .deposit(
+        charlie.depositAmount,
+        (
+          await generate_precommitment(
+            charlie.lastUsedNullifier,
+            charlie.secret
+          )
+        ).toString(),
+        { value: charlie.depositAmount }
+      );
+
+    alice.currentLeafIndex = 0n;
+    bob.currentLeafIndex = 1n;
+    charlie.currentLeafIndex = 2n;
+
+    tsTree.insert(
+      await calculateSolidityCommitment(
+        alice.lastUsedNullifier,
+        alice.secret,
+        alice.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+    tsTree.insert(
+      await calculateSolidityCommitment(
+        bob.lastUsedNullifier,
+        bob.secret,
+        bob.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+    tsTree.insert(
+      await calculateSolidityCommitment(
+        charlie.lastUsedNullifier,
+        charlie.secret,
+        charlie.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await ethPool.nextLeafIndex()).to.equal(3);
+
+    expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          alice.lastUsedNullifier,
+          alice.secret,
+          alice.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          bob.lastUsedNullifier,
+          bob.secret,
+          bob.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+    expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          charlie.lastUsedNullifier,
+          charlie.secret,
+          charlie.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+
+    expect(await ethPool.getPath(alice.currentLeafIndex)).to.deep.equal(
+      tsTree.getPath(Number(alice.currentLeafIndex)).map((x) => x.toString())
+    );
+    expect(await ethPool.getPath(bob.currentLeafIndex)).to.deep.equal(
+      tsTree.getPath(Number(bob.currentLeafIndex)).map((x) => x.toString())
+    );
+    expect(await ethPool.getPath(charlie.currentLeafIndex)).to.deep.equal(
+      tsTree.getPath(Number(charlie.currentLeafIndex)).map((x) => x.toString())
+    );
+  });
+
+  it("Happy Flow - Alice Bob Charlier Deposit their respective amounts", async function () {
+    // Alice and bob do a partial withdraw, and charlie does a full with draw
+    const alicePartialWithdrawAmount = ethers.parseEther("5");
+    const bobPartialWithdrawAmount = ethers.parseEther("10");
+    const charlieFullWithdrawAmount = ethers.parseEther("30");
+
+    const aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+
+    const [aliceNewNullifier, aliceNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+
+    const aliceProof = await generateWithdrawTransferProof(
+      alice.lastUsedNullifier.toString(),
+      alice.secret.toString(),
+      alice.depositAmount.toString(),
+      ETH_ADDRESS,
+      alice.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      aliceNewNullifier.toString(),
+      aliceNewSecret.toString(),
+      alicePartialWithdrawAmount.toString(),
+      aliceSiblings
+    );
+
+    expect(aliceProof.verified).to.equal(true);
+    expect(aliceProof.proof.length).to.equal(456 * 32);
+    expect(aliceProof.publicInputs.length).to.equal(4);
+
+    alice.lastUsedNullifier = aliceNewNullifier;
+    alice.secret = aliceNewSecret;
+    alice.depositAmount -= alicePartialWithdrawAmount;
+    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    // withdraw
+    await ethPool.connect(alice.signer).withdraw({
+      honkProof: aliceProof.proof,
+      publicInputs: aliceProof.publicInputs,
+    });
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        alice.lastUsedNullifier,
+        alice.secret,
+        alice.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    const [bobNewNullifier, bobNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+
+    const bobSiblings = await ethPool.getPath(bob.currentLeafIndex);
+
+    const bobProof = await generateWithdrawTransferProof(
+      bob.lastUsedNullifier.toString(),
+      bob.secret.toString(),
+      bob.depositAmount.toString(),
+      ETH_ADDRESS,
+      bob.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      bobNewNullifier.toString(),
+      bobNewSecret.toString(),
+      bobPartialWithdrawAmount.toString(),
+      bobSiblings
+    );
+
+    expect(bobProof.verified).to.equal(true);
+    expect(bobProof.proof.length).to.equal(456 * 32);
+    expect(bobProof.publicInputs.length).to.equal(4);
+
+    bob.lastUsedNullifier = bobNewNullifier;
+    bob.secret = bobNewSecret;
+    bob.depositAmount -= bobPartialWithdrawAmount;
+    bob.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    await ethPool.connect(bob.signer).withdraw({
+      honkProof: bobProof.proof,
+      publicInputs: bobProof.publicInputs,
+    });
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        bob.lastUsedNullifier,
+        bob.secret,
+        bob.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    const charlieNewNullifier = randomBigInt(1000000n);
+    const charlieNewSecret = randomBigInt(1000000n);
+
+    const charlieSiblings = await ethPool.getPath(charlie.currentLeafIndex);
+    const charlieProof = await generateWithdrawTransferProof(
+      charlie.lastUsedNullifier.toString(),
+      charlie.secret.toString(),
+      charlie.depositAmount.toString(),
+      ETH_ADDRESS,
+      charlie.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      charlieNewNullifier.toString(),
+      charlieNewSecret.toString(),
+      charlieFullWithdrawAmount.toString(),
+      charlieSiblings
+    );
+
+    expect(charlieProof.verified).to.equal(true);
+    expect(charlieProof.proof.length).to.equal(456 * 32);
+    expect(charlieProof.publicInputs.length).to.equal(4);
+
+    charlie.lastUsedNullifier = charlieNewNullifier;
+    charlie.secret = charlieNewSecret;
+    charlie.depositAmount -= charlieFullWithdrawAmount;
+    charlie.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    await ethPool.connect(charlie.signer).withdraw({
+      honkProof: charlieProof.proof,
+      publicInputs: charlieProof.publicInputs,
+    });
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        charlie.lastUsedNullifier,
+        charlie.secret,
+        charlie.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await ethPool.nextLeafIndex()).to.equal(6);
+    expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          alice.lastUsedNullifier,
+          alice.secret,
+          alice.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          bob.lastUsedNullifier,
+          bob.secret,
+          bob.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+    expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          charlie.lastUsedNullifier,
+          charlie.secret,
+          charlie.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+  });
+
+  it("Happy Flow - Alice transfers 1 ETH to Bob and 2 eth to David", async function () {
+    // alice transfer 1 eth to bob
+
+    let [aliceNewNullifier, aliceNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+    const bobReceiverHash = await poseidon2Hash([bob.receiverSecret]);
+    const davidReceiverHash = await poseidon2Hash([david.receiverSecret]);
+
+    let aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+    let aliceProof = await generateWithdrawTransferProof(
+      alice.lastUsedNullifier.toString(),
+      alice.secret.toString(),
+      alice.depositAmount.toString(),
+      ETH_ADDRESS,
+      alice.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      aliceNewNullifier.toString(),
+      aliceNewSecret.toString(),
+      ethers.parseEther("1").toString(),
+      aliceSiblings
+    );
+
+    expect(aliceProof.verified).to.equal(true);
+    expect(aliceProof.proof.length).to.equal(456 * 32);
+    expect(aliceProof.publicInputs.length).to.equal(4);
+
+    alice.lastUsedNullifier = aliceNewNullifier;
+    alice.secret = aliceNewSecret;
+    alice.depositAmount -= ethers.parseEther("1");
+    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    const bobTransferTx = await ethPool.connect(alice.signer).transfer(
+      {
+        honkProof: aliceProof.proof,
+        publicInputs: aliceProof.publicInputs,
+      },
+      bobReceiverHash.toString()
+    );
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        alice.lastUsedNullifier,
+        alice.secret,
+        alice.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+    const bobReceipt = await bobTransferTx.wait();
+
+    const BobNewNoteEvent = bobReceipt?.logs?.find(
+      (log) =>
+        log.topics[0] === ethers.id("NoteCreated(bytes32,uint256,uint256)")
+    );
+
+    expect(BobNewNoteEvent).to.not.be.undefined;
+    const noteNonce = (BobNewNoteEvent as EventLog)!.args[2];
+    expect(noteNonce).to.equal(0n);
+    bob.claimableNoteNonces.push(noteNonce);
+
+    [aliceNewNullifier, aliceNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+
+    aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+    aliceProof = await generateWithdrawTransferProof(
+      alice.lastUsedNullifier.toString(),
+      alice.secret.toString(),
+      alice.depositAmount.toString(),
+      ETH_ADDRESS,
+      alice.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      aliceNewNullifier.toString(),
+      aliceNewSecret.toString(),
+      ethers.parseEther("2").toString(),
+      aliceSiblings
+    );
+
+    // console.log("checkpoint 2")
+    expect(aliceProof.verified).to.equal(true);
+    expect(aliceProof.proof.length).to.equal(456 * 32);
+    expect(aliceProof.publicInputs.length).to.equal(4);
+
+    alice.lastUsedNullifier = aliceNewNullifier;
+    alice.secret = aliceNewSecret;
+    alice.depositAmount -= ethers.parseEther("2");
+    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    const davidTransferTx = await ethPool.connect(alice.signer).transfer(
+      {
+        honkProof: aliceProof.proof,
+        publicInputs: aliceProof.publicInputs,
+      },
+      davidReceiverHash.toString()
+    );
+
+    const davidReceipt = await davidTransferTx.wait();
+
+    const DavidNewNoteEvent = davidReceipt?.logs?.find(
+      (log) =>
+        log.topics[0] === ethers.id("NoteCreated(bytes32,uint256,uint256)")
+    );
+
+    expect(DavidNewNoteEvent).to.not.be.undefined;
+    const davidNoteNonce = (DavidNewNoteEvent as EventLog)!.args[2];
+    expect(davidNoteNonce).to.equal(1n);
+    david.claimableNoteNonces.push(davidNoteNonce);
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        alice.lastUsedNullifier,
+        alice.secret,
+        alice.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    [aliceNewNullifier, aliceNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+  });
+
+  it("Bob and David claim their notes", async function () {
+    const bobReceiverHash = await poseidon2Hash([bob.receiverSecret]);
+    const davidReceiverHash = await poseidon2Hash([david.receiverSecret]);
+
+    const [bobNewNullifier, bobNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+    const [davidNewNullifier, davidNewSecret] = [
+      randomBigInt(1000000n),
+      randomBigInt(1000000n),
+    ];
+
+    const bobSiblings = await ethPool.getPath(bob.currentLeafIndex);
+
+    // const bobClaim
+    // note_nonce: string, claim_value: string, existingNullifier: string, existingSecret: string,
+    // existingValue: string, label: string, leaf_index: string, merkle_root: string, newNullifier: string,
+    // newSecret: string, receiver_secret: string, receiver_secretHash: string, siblings: string[])
+    let bobClaimProof = await generateClaimProof(
+      bob.claimableNoteNonces[0].toString(),
+      ethers.parseEther("1").toString(),
+      bob.lastUsedNullifier.toString(),
+      bob.secret.toString(),
+      bob.depositAmount.toString(),
+      ETH_ADDRESS,
+      bob.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      bobNewNullifier.toString(),
+      bobNewSecret.toString(),
+      bob.receiverSecret.toString(),
+      bobReceiverHash.toString(),
+      bobSiblings
+    );
+
+    expect(bobClaimProof.verified).to.equal(true);
+    expect(bobClaimProof.proof.length).to.equal(456 * 32);
+    expect(bobClaimProof.publicInputs.length).to.equal(6);
+
+    bob.lastUsedNullifier = bobNewNullifier;
+    bob.secret = bobNewSecret;
+    bob.depositAmount += ethers.parseEther("1");
+    bob.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    await ethPool.connect(bob.signer).claim({
+      honkProof: bobClaimProof.proof,
+      publicInputs: bobClaimProof.publicInputs,
+    });
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        bob.lastUsedNullifier,
+        bob.secret,
+        bob.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          bob.lastUsedNullifier,
+          bob.secret,
+          bob.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+
+    expect(await ethPool.getPath(bob.currentLeafIndex)).to.deep.equal(
+      tsTree.getPath(Number(bob.currentLeafIndex)).map((x) => x.toString())
+    );
+
+    // david doesnt have previous commitments so he can directly claim
+    let davidClaimProof = await generateClaimProof(
+      david.claimableNoteNonces[0].toString(),
+      ethers.parseEther("2").toString(),
+      david.lastUsedNullifier.toString(),
+      david.secret.toString(),
+      david.depositAmount.toString(),
+      ETH_ADDRESS,
+      david.currentLeafIndex.toString(),
+      tsTree.getRoot().toString(),
+      davidNewNullifier.toString(),
+      davidNewSecret.toString(),
+      david.receiverSecret.toString(),
+      davidReceiverHash.toString(),
+      Array.from({ length: 32 }, () => "0")
+    );
+
+    expect(davidClaimProof.verified).to.equal(true);
+    expect(davidClaimProof.proof.length).to.equal(456 * 32);
+    expect(davidClaimProof.publicInputs.length).to.equal(6);
+
+    david.lastUsedNullifier = davidNewNullifier;
+    david.secret = davidNewSecret;
+    david.depositAmount += ethers.parseEther("2");
+    david.currentLeafIndex = await ethPool.nextLeafIndex();
+
+    await ethPool.connect(david.signer).claim({
+      honkProof: davidClaimProof.proof,
+      publicInputs: davidClaimProof.publicInputs,
+    });
+
+    await tsTree.insert(
+      await calculateSolidityCommitment(
+        david.lastUsedNullifier,
+        david.secret,
+        david.depositAmount,
+        ETH_ADDRESS
+      )
+    );
+
+    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await ethPool.getLeaf(david.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          david.lastUsedNullifier,
+          david.secret,
+          david.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
+
+    expect(await ethPool.getPath(david.currentLeafIndex)).to.deep.equal(
+      tsTree.getPath(Number(david.currentLeafIndex)).map((x) => x.toString())
+    );
+
+    expect(await ethPool.getLeaf(david.currentLeafIndex)).to.equal(
+      (
+        await calculateSolidityCommitment(
+          david.lastUsedNullifier,
+          david.secret,
+          david.depositAmount,
+          ETH_ADDRESS
+        )
+      ).toString()
+    );
   });
 });

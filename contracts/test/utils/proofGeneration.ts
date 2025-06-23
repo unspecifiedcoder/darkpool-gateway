@@ -26,6 +26,11 @@ export async function generateClaimProof(
   const noir = new Noir(ClaimCircuit as any);
   const honk = new UltraHonkBackend(ClaimCircuit.bytecode, { threads: 8 });
 
+  // generate and write verifier to file
+  // const verifier = await honk.getSolidityVerifier();
+  // fs.writeFileSync("./verifier.sol", verifier);
+  // console.log("Verifier written to file");
+
   const inputs = {
     _note_nonce: note_nonce,
     claim_value,
@@ -64,6 +69,11 @@ export const generateWithdrawTransferProof = async (
     
     const noir = new Noir(WithdrawTransferCircuit as any);
     const honk = new UltraHonkBackend(WithdrawTransferCircuit.bytecode, { threads: 8 });
+    
+    // // generate and write verifier to file
+    // const verifier = await honk.getSolidityVerifier();
+    // fs.writeFileSync("./verifier.sol", verifier);
+    // console.log("Verifier written to file");
     
 
     const inputs = {
