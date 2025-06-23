@@ -22,7 +22,7 @@ import { poseidon2Hash, randomBigInt } from "@aztec/foundation/crypto";
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const MAX_TREE_DEPTH = 32;
 
-describe.skip("EthPool Contract Tests", function () {
+describe("EthPool Contract Tests", function () {
   let deployer: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
@@ -83,7 +83,7 @@ describe.skip("EthPool Contract Tests", function () {
     return false;
   }
 
-  describe.skip("Deployment & Configuration", function () {
+  describe("Deployment & Configuration", function () {
     it("Should set the correct EntryPoint address", async function () {
       expect(await ethPool.entryPoint()).to.equal(entryPoint.address);
     });
@@ -106,7 +106,7 @@ describe.skip("EthPool Contract Tests", function () {
     });
   });
 
-  describe.skip("deposit()", function () {
+  describe("deposit()", function () {
     const depositAmount = ethers.parseEther("1");
     let nullifier: bigint;
     let secret: bigint;
@@ -255,7 +255,7 @@ describe.skip("EthPool Contract Tests", function () {
     });
   });
 
-  describe.skip("withdraw()", function () {
+  describe("withdraw()", function () {
     const initialDeposit = ethers.parseEther("10");
     let precommitment: string, initialCommitment: string;
     let leafIndex: bigint;
@@ -586,7 +586,7 @@ describe.skip("EthPool Contract Tests", function () {
     });
   });
 
-  describe.skip("transfer()", function () {
+  describe("transfer()", function () {
     // Similar setup to withdraw: user1 has a deposit
     // User1 transfers an amount, which creates a note for User2 (receiver)
     // User1's original commitment is nullified, a new one (less the transfer_value) is created.
@@ -849,7 +849,7 @@ describe.skip("EthPool Contract Tests", function () {
     });
   });
 
-  describe.skip("Admin Functions (setVerifiers)", function () {
+  describe("Admin Functions (setVerifiers)", function () {
     let newVerifier: HardhatEthersSigner;
     beforeEach(async () => {
       [, , , , newVerifier] = await ethers.getSigners(); // Yet another address
@@ -879,7 +879,7 @@ describe.skip("EthPool Contract Tests", function () {
     });
   });
 
-  describe.skip("View Functions", function () {
+  describe("View Functions", function () {
     let tsTree: LeanIMT;
     it("getPath should return siblings for a valid leafIndex", async function () {
       tsTree = new LeanIMT(MAX_TREE_DEPTH);
