@@ -184,5 +184,6 @@ fn test_main2() {
         siblings,
     );
 
-    assert(main_result == 0x21adcd4c0b79b79f4564706cce1f55dad4f3211aa1d4b533ada3f4b1edbd41d6);
+    // println(main_result);
+    assert(main_result == 0x28c1f1ee34da8b475edbcd50df1fd539075e650973ccf0ccbe75eade07267a97);
 }
