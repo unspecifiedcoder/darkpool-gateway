@@ -2,9 +2,11 @@ import { ethers } from "hardhat";
 import { expect } from "chai";
 import {
   ClaimHonkVerifier,
-  EthPool,
+  TokenPool,
   Poseidon2,
   WithdrawTransferHonkVerifier,
+  MockErc20,
+  TokenPool__factory,
 } from "../../typechain-types"; // Adjust paths
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
@@ -19,19 +21,19 @@ import { EventLog } from "ethers";
 import { LeanIMT } from "../test_utils/leanIMT";
 import { poseidon2Hash, randomBigInt } from "@aztec/foundation/crypto";
 
-const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 const MAX_TREE_DEPTH = 32;
 
-describe("EthPool Contract Tests", function () {
+describe("TokenPool Contract Tests", function () {
   let deployer: HardhatEthersSigner;
   let user1: HardhatEthersSigner;
   let user2: HardhatEthersSigner;
   let entryPoint: HardhatEthersSigner;
 
-  let ethPool: EthPool;
+  let tokenPool: TokenPool;
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
   let ClaimVerifier: ClaimHonkVerifier;
   let poseidon2: Poseidon2;
+  let mockToken: MockErc20;
 
   beforeEach(async function () {
     [deployer, user1, user2, entryPoint] = await ethers.getSigners();
@@ -60,23 +62,37 @@ describe("EthPool Contract Tests", function () {
     poseidon2 = (await Poseidon2Factory.deploy()) as Poseidon2;
     await poseidon2.waitForDeployment();
 
-    const EthPoolFactory = await ethers.getContractFactory("EthPool", {
+    const MockErc20Factory = await ethers.getContractFactory("MockErc20");
+
+    mockToken = (await MockErc20Factory.deploy()) as MockErc20;
+    await mockToken.waitForDeployment();
+
+    const TokenPoolFactory = await ethers.getContractFactory("TokenPool", {
       libraries: {
         Poseidon2: poseidon2.target,
       },
     });
-    ethPool = (await EthPoolFactory.deploy(
+
+    tokenPool = (await TokenPoolFactory.deploy(
       entryPoint.address, // Using signer as mock EntryPoint
+      mockToken.target,
       WithdrawVerifier.target,
       ClaimVerifier.target,
       MAX_TREE_DEPTH
-    )) as EthPool;
-    await ethPool.waitForDeployment();
+    )) as TokenPool;
+    await tokenPool.waitForDeployment();
+
+    // mint all users 100 tokens
+    await mockToken.mint(user1.address, ethers.parseEther("100"));
+    await mockToken.mint(user2.address, ethers.parseEther("100"));
   });
 
-  async function isKnownRoot(ethPool: EthPool, root: string): Promise<boolean> {
+  async function isKnownRoot(
+    tokenPool: TokenPool,
+    root: string
+  ): Promise<boolean> {
     for (let i = 0; i < 100; i++) {
-      if ((await ethPool.roots(i)) === root) {
+      if ((await tokenPool.roots(i)) === root) {
         return true;
       }
     }
@@ -85,24 +101,24 @@ describe("EthPool Contract Tests", function () {
 
   describe("Deployment & Configuration", function () {
     it("Should set the correct EntryPoint address", async function () {
-      expect(await ethPool.entryPoint()).to.equal(entryPoint.address);
+      expect(await tokenPool.entryPoint()).to.equal(entryPoint.address);
     });
     it("Should set the correct withdraw verifier address", async function () {
-      expect(await ethPool.withdraw_transfer_verifier()).to.equal(
+      expect(await tokenPool.withdraw_transfer_verifier()).to.equal(
         WithdrawVerifier.target
       );
     });
     it("Should set the correct claim verifier address", async function () {
-      expect(await ethPool.claim_verifier()).to.equal(ClaimVerifier.target);
+      expect(await tokenPool.claim_verifier()).to.equal(ClaimVerifier.target);
     });
     it("Should initialize with tree depth", async function () {
-      expect(await ethPool.TREE_DEPTH()).to.equal(MAX_TREE_DEPTH);
+      expect(await tokenPool.TREE_DEPTH()).to.equal(MAX_TREE_DEPTH);
     });
     it("Should initialize with an empty root or a defined initial root", async function () {
-      expect(await ethPool.currentRoot()).to.equal(ethers.ZeroHash);
+      expect(await tokenPool.currentRoot()).to.equal(ethers.ZeroHash);
     });
     it("Should initialize noteNonce to 0", async function () {
-      expect(await ethPool.noteNonce()).to.equal(0);
+      expect(await tokenPool.noteNonce()).to.equal(0);
     });
   });
 
@@ -127,50 +143,53 @@ describe("EthPool Contract Tests", function () {
         nullifier,
         secret,
         depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
       await tsTree.insert(expectedCommitmentFr); // Update JS tree
 
       const expectedCommitment = expectedCommitmentFr.toString();
-      const initialContractBalance = await ethers.provider.getBalance(
-        ethPool.target
+      const initialContractBalance = await mockToken.balanceOf(
+        tokenPool.target
       );
 
+      // approve tokens
+      await mockToken.connect(user1).approve(tokenPool.target, depositAmount);
+
       await expect(
-        ethPool
-          .connect(user1)
-          .deposit(depositAmount, precommitment, { value: depositAmount })
+        tokenPool.connect(user1).deposit(depositAmount, precommitment)
       )
-        .to.emit(ethPool, "CommitmentInserted")
+        .to.emit(tokenPool, "CommitmentInserted")
         .withArgs(expectedCommitment, 0, tsTree.getRoot().toString());
 
-      expect(await ethPool.nextLeafIndex()).to.equal(1);
-      expect(await ethPool.getLeaf(0)).to.equal(expectedCommitment);
-      expect(await ethers.provider.getBalance(ethPool.target)).to.equal(
+      expect(await tokenPool.nextLeafIndex()).to.equal(1);
+      expect(await tokenPool.getLeaf(0)).to.equal(expectedCommitment);
+      expect(await mockToken.balanceOf(tokenPool.target)).to.equal(
         initialContractBalance + depositAmount
       );
     });
 
     it("Should allow multiple deposits and update root correctly", async function () {
+      // approve tokens
+      await mockToken.connect(user1).approve(tokenPool.target, depositAmount);
       // Deposit 1
-      await ethPool
-        .connect(user1)
-        .deposit(depositAmount, precommitment, { value: depositAmount });
+      await tokenPool.connect(user1).deposit(depositAmount, precommitment);
       const commitment1Fr = await calculateSolidityCommitment(
         nullifier,
         secret,
         depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
 
       await tsTree.insert(commitment1Fr);
       const commitment1 = commitment1Fr.toString();
 
-      expect(await ethPool.getLeaf(0)).to.equal(commitment1);
-      expect(await ethPool.nextLeafIndex()).to.equal(1);
-      expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+      expect(await tokenPool.getLeaf(0)).to.equal(commitment1);
+      expect(await tokenPool.nextLeafIndex()).to.equal(1);
+      expect(await tokenPool.currentRoot()).to.equal(
+        tsTree.getRoot().toString()
+      );
 
-      expect(await isKnownRoot(ethPool, tsTree.getRoot().toString())).to.be
+      expect(await isKnownRoot(tokenPool, tsTree.getRoot().toString())).to.be
         .true;
 
       // Deposit 2 (different user, different precommitment)
@@ -184,73 +203,78 @@ describe("EthPool Contract Tests", function () {
         nullifier2,
         secret2,
         depositAmount2,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
       await tsTree.insert(commitment2);
 
+      // approve tokens
+      await mockToken.connect(user2).approve(tokenPool.target, depositAmount2);
       await expect(
-        ethPool
-          .connect(user2)
-          .deposit(depositAmount2, precommitment2, { value: depositAmount2 })
+        tokenPool.connect(user2).deposit(depositAmount2, precommitment2)
       )
-        .to.emit(ethPool, "CommitmentInserted")
+        .to.emit(tokenPool, "CommitmentInserted")
         .withArgs(commitment2.toString(), 1, tsTree.getRoot().toString()); // Check actual root
 
-      expect(await ethPool.nextLeafIndex()).to.equal(2);
-      expect(await ethPool.getLeaf(1)).to.equal(commitment2.toString());
-      // expect(await ethPool.currentRoot()).to.equal(jsTree.getRoot());
-      expect(await isKnownRoot(ethPool, tsTree.getRoot().toString())).to.be
+      expect(await tokenPool.nextLeafIndex()).to.equal(2);
+      expect(await tokenPool.getLeaf(1)).to.equal(commitment2.toString());
+      // expect(await tokenPool.currentRoot()).to.equal(jsTree.getRoot());
+      expect(await isKnownRoot(tokenPool, tsTree.getRoot().toString())).to.be
         .true;
     });
 
-    it("Should revert if msg.value does not match deposit amount", async function () {
+    it("Should revert if approval does not match deposit amount", async function () {
+      // approve tokens
+      await mockToken
+        .connect(user1)
+        .approve(tokenPool.target, depositAmount - ethers.parseEther("0.1"));
       await expect(
-        ethPool.connect(user1).deposit(depositAmount, precommitment, {
-          value: ethers.parseEther("0.1"),
-        })
-      ).to.be.revertedWith("AssetPool: Invalid amount");
+        tokenPool.connect(user1).deposit(depositAmount, precommitment)
+      ).to.be.reverted;
     });
 
     it("Should revert if deposit amount is zero", async function () {
+      // approve tokens
+      await mockToken.connect(user1).approve(tokenPool.target, depositAmount);
       await expect(
-        ethPool.connect(user1).deposit(0, precommitment, { value: 0 })
+        tokenPool.connect(user1).deposit(0, precommitment)
       ).to.be.revertedWith("AssetPool: Invalid amount");
     });
 
     it("Should revert if precommitment is zero", async function () {
+      // approve tokens
+      await mockToken.connect(user1).approve(tokenPool.target, depositAmount);
       await expect(
-        ethPool
-          .connect(user1)
-          .deposit(depositAmount, ethers.ZeroHash, { value: depositAmount })
+        tokenPool.connect(user1).deposit(depositAmount, ethers.ZeroHash)
       ).to.be.revertedWith("AssetPool: Invalid precommitment");
     });
 
     it("Should revert if tree is full", async function () {
       const treeDepth = 4;
       let maxLeaves = 2 ** treeDepth;
-      const EthPoolFactory = await ethers.getContractFactory("EthPool", {
+      const tokenPoolFactory = await ethers.getContractFactory("TokenPool", {
         libraries: {
           Poseidon2: poseidon2.target,
         },
       });
-      const ethPool = (await EthPoolFactory.deploy(
+      const tokenPool = (await tokenPoolFactory.deploy(
         entryPoint.address,
+        mockToken.target,
         WithdrawVerifier.target,
         ClaimVerifier.target,
         treeDepth
-      )) as EthPool;
-      await ethPool.waitForDeployment();
+      )) as TokenPool;
+      await tokenPool.waitForDeployment();
+
+      await mockToken
+        .connect(user1)
+        .approve(tokenPool.target, ethers.parseEther("100"));
 
       // deposit until 2 ** 4 should be valid and should revert after that
       for (let i = 0; i < maxLeaves; i++) {
-        await ethPool
-          .connect(user1)
-          .deposit(depositAmount, precommitment, { value: depositAmount });
+        await tokenPool.connect(user1).deposit(depositAmount, precommitment);
       }
       await expect(
-        ethPool
-          .connect(user1)
-          .deposit(depositAmount, precommitment, { value: depositAmount })
+        tokenPool.connect(user1).deposit(depositAmount, precommitment)
       ).to.be.revertedWith("MerkleTree: tree is full");
     });
   });
@@ -286,21 +310,25 @@ describe("EthPool Contract Tests", function () {
           user1Original.nullifier,
           user1Original.secret,
           user1Original.value,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString();
-      leafIndex = await ethPool.deposit.staticCall(
-        user1Original.value,
-        precommitment,
-        { value: user1Original.value }
-      );
-      await ethPool.connect(user1).deposit(user1Original.value, precommitment, {
-        value: user1Original.value,
-      });
 
-      expect(await ethPool.getLeaf(leafIndex)).to.equal(initialCommitment);
-      expect(await ethPool.nextLeafIndex()).to.equal(1);
-      currentMerkleRoot = await ethPool.currentRoot(); // or jsTree.getRoot()
+      await mockToken
+        .connect(user1)
+        .approve(tokenPool.target, user1Original.value);
+
+      leafIndex = await tokenPool.connect(user1).deposit.staticCall(
+        user1Original.value,
+        precommitment
+      );
+      await tokenPool
+        .connect(user1)
+        .deposit(user1Original.value, precommitment);
+
+      expect(await tokenPool.getLeaf(leafIndex)).to.equal(initialCommitment);
+      expect(await tokenPool.nextLeafIndex()).to.equal(1);
+      currentMerkleRoot = await tokenPool.currentRoot(); // or jsTree.getRoot()
     });
 
     it("Should allow a user to withdraw a partial amount with a valid proof", async function () {
@@ -311,18 +339,18 @@ describe("EthPool Contract Tests", function () {
         user1New.nullifier,
         user1New.secret,
         remainingValue,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
       // const siblings = jsTree.getPath(leafIndex);
 
-      const siblings = await ethPool.getPath(leafIndex);
+      const siblings = await tokenPool.getPath(leafIndex);
 
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           leafIndex.toString(),
           currentMerkleRoot,
           user1New.nullifier.toString(),
@@ -332,16 +360,12 @@ describe("EthPool Contract Tests", function () {
         );
       expect(verified).to.be.true;
 
-      const initialUserBalance = await ethers.provider.getBalance(
-        user1.address
-      );
-      const initialContractBalance = await ethers.provider.getBalance(
-        ethPool.target
+      const initialUserBalance = await mockToken.balanceOf(user1.address);
+      const initialContractBalance = await mockToken.balanceOf(
+        tokenPool.target
       );
 
-      const withdrawTx = await ethPool.connect(user1).withdraw(
-        user1.address,
-        {
+      const withdrawTx = await tokenPool.connect(user1).withdraw(user1.address,{
         honkProof: proof,
         publicInputs,
       });
@@ -352,22 +376,22 @@ describe("EthPool Contract Tests", function () {
       expect(gasUsed).to.be.greaterThan(0);
 
       expect(
-        await ethPool.isNullifierSpent(
+        await tokenPool.isNullifierSpent(
           ethers.zeroPadValue("0x" + user1Original.nullifier.toString(16), 32)
         )
       ).to.be.true;
-      expect(await ethPool.nextLeafIndex()).to.equal(leafIndex + 2n); // initial + this new one
+      expect(await tokenPool.nextLeafIndex()).to.equal(leafIndex + 2n); // initial + this new one
 
-      expect(await ethPool.getLeaf(leafIndex + 1n)).to.equal(
+      expect(await tokenPool.getLeaf(leafIndex + 1n)).to.equal(
         newCommitmentForProof.toString()
       );
-      expect(await isKnownRoot(ethPool, await ethPool.currentRoot())).to.be
+      expect(await isKnownRoot(tokenPool, await tokenPool.currentRoot())).to.be
         .true;
 
-      expect(await ethers.provider.getBalance(user1.address)).to.equal(
-        initialUserBalance + withdrawValue - gasUsed
+      expect(await mockToken.balanceOf(user1.address)).to.equal(
+        initialUserBalance + withdrawValue
       );
-      expect(await ethers.provider.getBalance(ethPool.target)).to.equal(
+      expect(await mockToken.balanceOf(tokenPool.target)).to.equal(
         initialContractBalance - withdrawValue
       );
 
@@ -392,16 +416,16 @@ describe("EthPool Contract Tests", function () {
         user1New.nullifier,
         user1New.secret,
         remainingValue,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
 
-      const siblings = await ethPool.getPath(leafIndex);
+      const siblings = await tokenPool.getPath(leafIndex);
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           leafIndex.toString(),
           currentMerkleRoot,
           user1New.nullifier.toString(),
@@ -411,14 +435,12 @@ describe("EthPool Contract Tests", function () {
         );
       expect(verified).to.be.true;
 
-      const initialUserBalance = await ethers.provider.getBalance(
-        user1.address
-      );
-      const initialContractBalance = await ethers.provider.getBalance(
-        ethPool.target
+      const initialUserBalance = await mockToken.balanceOf(user1.address);
+      const initialContractBalance = await mockToken.balanceOf(
+        tokenPool.target
       );
 
-      const withdrawTx = await ethPool.connect(user1).withdraw(user1.address, {
+      const withdrawTx = await tokenPool.connect(user1).withdraw(user1.address,{
         honkProof: proof,
         publicInputs,
       });
@@ -429,22 +451,22 @@ describe("EthPool Contract Tests", function () {
       expect(gasUsed).to.be.greaterThan(0);
 
       expect(
-        await ethPool.isNullifierSpent(
+        await tokenPool.isNullifierSpent(
           ethers.zeroPadValue("0x" + user1Original.nullifier.toString(16), 32)
         )
       ).to.be.true;
-      expect(await ethPool.nextLeafIndex()).to.equal(leafIndex + 2n); // initial + this new one
+      expect(await tokenPool.nextLeafIndex()).to.equal(leafIndex + 2n); // initial + this new one
 
-      expect(await ethPool.getLeaf(leafIndex + 1n)).to.equal(
+      expect(await tokenPool.getLeaf(leafIndex + 1n)).to.equal(
         newCommitmentForProof.toString()
       );
-      expect(await isKnownRoot(ethPool, await ethPool.currentRoot())).to.be
+      expect(await isKnownRoot(tokenPool, await tokenPool.currentRoot())).to.be
         .true;
 
-      expect(await ethers.provider.getBalance(user1.address)).to.equal(
-        initialUserBalance + withdrawValue - gasUsed
+      expect(await mockToken.balanceOf(user1.address)).to.equal(
+        initialUserBalance + withdrawValue
       );
-      expect(await ethers.provider.getBalance(ethPool.target)).to.equal(
+      expect(await mockToken.balanceOf(tokenPool.target)).to.equal(
         initialContractBalance - withdrawValue
       );
 
@@ -464,13 +486,13 @@ describe("EthPool Contract Tests", function () {
 
     it("Should revert if withdraw proof is invalid", async function () {
       const withdrawValue = ethers.parseEther("3");
-      const siblings = await ethPool.getPath(leafIndex);
+      const siblings = await tokenPool.getPath(leafIndex);
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           leafIndex.toString(),
           currentMerkleRoot,
           user1New.nullifier.toString(),
@@ -486,7 +508,7 @@ describe("EthPool Contract Tests", function () {
       invalidProof[2] = 0xf1;
       // invalid proof
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: invalidProof,
           publicInputs,
         })
@@ -502,7 +524,7 @@ describe("EthPool Contract Tests", function () {
       );
 
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: proof,
           publicInputs: invalidPublicInputs,
         })
@@ -515,7 +537,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: proof,
           publicInputs: invalidPublicInputs2,
         })
@@ -528,7 +550,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: proof,
           publicInputs: invalidPublicInputs3,
         })
@@ -541,7 +563,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: proof,
           publicInputs: invalidPublicInputs4,
         })
@@ -551,20 +573,14 @@ describe("EthPool Contract Tests", function () {
     it("Should revert if nullifier has already been spent", async function () {
       const withdrawValue = ethers.parseEther("3");
       const remainingValue = user1Original.value - withdrawValue;
-      const newCommitmentForProof = await calculateSolidityCommitment(
-        user1New.nullifier,
-        user1New.secret,
-        remainingValue,
-        ETH_ADDRESS
-      );
 
-      const siblings = await ethPool.getPath(leafIndex);
+      const siblings = await tokenPool.getPath(leafIndex);
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           leafIndex.toString(),
           currentMerkleRoot,
           user1New.nullifier.toString(),
@@ -574,13 +590,13 @@ describe("EthPool Contract Tests", function () {
         );
       expect(verified).to.be.true;
 
-      await ethPool.connect(user1).withdraw(user1.address,{
+      await tokenPool.connect(user1).withdraw(user1.address,{
         honkProof: proof,
         publicInputs,
       }); // First withdrawal, spends nullifier
 
       await expect(
-        ethPool.connect(user1).withdraw(user1.address,{
+        tokenPool.connect(user1).withdraw(user1.address,{
           honkProof: proof,
           publicInputs,
         })
@@ -616,22 +632,24 @@ describe("EthPool Contract Tests", function () {
           user1Original.nullifier,
           user1Original.secret,
           user1Original.value,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString();
 
-      user1LeafIndex = await ethPool.deposit.staticCall(
-        user1Original.value,
-        precommitment1.toString(),
-        { value: user1Original.value }
-      );
-      await ethPool
+      await mockToken
         .connect(user1)
-        .deposit(user1Original.value, precommitment1.toString(), {
-          value: user1Original.value,
-        });
+        .approve(tokenPool.target, user1Original.value);
 
-      initialMerkleRoot = await ethPool.currentRoot(); // or jsTree.getRoot();
+      user1LeafIndex = await tokenPool.connect(user1).deposit.staticCall(
+        user1Original.value,
+        precommitment1.toString()
+      );
+
+      await tokenPool
+        .connect(user1)
+        .deposit(user1Original.value, precommitment1.toString());
+
+      initialMerkleRoot = await tokenPool.currentRoot(); // or jsTree.getRoot();
 
       receiverSecretHashForNote = (
         await poseidon2Hash([receiverUser2.secret])
@@ -647,16 +665,16 @@ describe("EthPool Contract Tests", function () {
         user1NewAfterTransfer.nullifier,
         user1NewAfterTransfer.secret,
         senderRemainingValue,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
 
-      const siblings = await ethPool.getPath(user1LeafIndex);
+      const siblings = await tokenPool.getPath(user1LeafIndex);
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           user1LeafIndex.toString(),
           initialMerkleRoot,
           user1NewAfterTransfer.nullifier.toString(),
@@ -671,21 +689,21 @@ describe("EthPool Contract Tests", function () {
         publicInputs,
       };
 
-      const initialNoteNonce = await ethPool.noteNonce();
+      const initialNoteNonce = await tokenPool.noteNonce();
       const expectedNoteID = ethers.solidityPackedKeccak256(
         ["address", "uint256"],
-        [ETH_ADDRESS, initialNoteNonce]
+        [mockToken.target.toString(), initialNoteNonce]
       );
 
-      const transferTx = await ethPool
+      const transferTx = await tokenPool
         .connect(user1)
         .transfer(params, receiverSecretHashForNote);
       await expect(transferTx)
-        .to.emit(ethPool, "CommitmentInserted") // For sender's new commitment
+        .to.emit(tokenPool, "CommitmentInserted") // For sender's new commitment
         .withArgs(
           senderNewCommitmentForProof.toString(),
           user1LeafIndex + 1n,
-          await ethPool.currentRoot()
+          await tokenPool.currentRoot()
         ); // or jsTree.getRoot()
 
       const receipt = await transferTx.wait();
@@ -705,21 +723,16 @@ describe("EthPool Contract Tests", function () {
       );
 
       expect(
-        await ethPool.isNullifierSpent(
+        await tokenPool.isNullifierSpent(
           ethers.zeroPadValue("0x" + user1Original.nullifier.toString(16), 32)
         )
       ).to.be.true;
-      // expect(await ethPool.currentRoot()).to.equal(jsTree.getRoot());
-      expect(await ethPool.nextLeafIndex()).to.equal(user1LeafIndex + 2n);
-      expect(await ethPool.noteNonce()).to.equal(initialNoteNonce + 1n);
+      expect(await tokenPool.nextLeafIndex()).to.equal(user1LeafIndex + 2n);
+      expect(await tokenPool.noteNonce()).to.equal(initialNoteNonce + 1n);
 
-      const note = await ethPool.notes(expectedNoteID);
+      const note = await tokenPool.notes(expectedNoteID);
       expect(note.receiverHash).to.equal(receiverSecretHashForNote);
       expect(note.value).to.equal(transferValue);
-      // **BUG CHECK**: note.claimedBlockNumber should be 0 here if bug is fixed.
-      // If bug is NOT fixed, it will be current block.number.
-      // Let's assume the bug (note.claimedBlockNumber = block.number in transfer) needs to be fixed for this test to be ideal.
-      // For now, testing current (buggy) behavior:
       expect(note.claimedBlockNumber).to.equal(0);
     });
 
@@ -734,16 +747,16 @@ describe("EthPool Contract Tests", function () {
         user1NewAfterTransfer.nullifier,
         user1NewAfterTransfer.secret,
         senderRemainingValue,
-        ETH_ADDRESS
+        mockToken.target.toString()
       );
 
-      const siblings = await ethPool.getPath(user1LeafIndex);
+      const siblings = await tokenPool.getPath(user1LeafIndex);
       const { proof, publicInputs, verified } =
         await generateWithdrawTransferProof(
           user1Original.nullifier.toString(),
           user1Original.secret.toString(),
           user1Original.value.toString(),
-          ETH_ADDRESS,
+          mockToken.target.toString(),
           user1LeafIndex.toString(),
           initialMerkleRoot,
           user1NewAfterTransfer.nullifier.toString(),
@@ -771,7 +784,7 @@ describe("EthPool Contract Tests", function () {
         publicInputs,
       };
       await expect(
-        ethPool
+        tokenPool
           .connect(user1)
           .transfer(invalidParams, receiverSecretHashForNote)
       ).to.be.reverted;
@@ -783,7 +796,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).transfer(
+        tokenPool.connect(user1).transfer(
           {
             honkProof: proof,
             publicInputs: invalidPublicInputs,
@@ -798,7 +811,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).transfer(params, invalidReceiverSecretHash)
+        tokenPool.connect(user1).transfer(params, invalidReceiverSecretHash)
       ).to.be.reverted;
 
       // invalid merkle root
@@ -808,7 +821,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).transfer(
+        tokenPool.connect(user1).transfer(
           {
             honkProof: proof,
             publicInputs: invalidPublicInputs,
@@ -824,7 +837,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).transfer(
+        tokenPool.connect(user1).transfer(
           {
             honkProof: proof,
             publicInputs: invalidPublicInputs,
@@ -840,7 +853,7 @@ describe("EthPool Contract Tests", function () {
         32
       );
       await expect(
-        ethPool.connect(user1).transfer(
+        tokenPool.connect(user1).transfer(
           {
             honkProof: proof,
             publicInputs: invalidPublicInputs,
@@ -858,25 +871,27 @@ describe("EthPool Contract Tests", function () {
     });
 
     it("Should allow EntryPoint to set WithdrawTransferVerifier", async function () {
-      await ethPool
+      await tokenPool
         .connect(entryPoint)
         .setWithdrawTransferVerifier(newVerifier.address);
-      expect(await ethPool.withdraw_transfer_verifier()).to.equal(
+      expect(await tokenPool.withdraw_transfer_verifier()).to.equal(
         newVerifier.address
       );
     });
     it("Should prevent non-EntryPoint from setting WithdrawTransferVerifier", async function () {
       await expect(
-        ethPool.connect(user1).setWithdrawTransferVerifier(newVerifier.address)
+        tokenPool
+          .connect(user1)
+          .setWithdrawTransferVerifier(newVerifier.address)
       ).to.be.revertedWith("AssetPool: Caller is not the EntryPoint");
     });
     it("Should allow EntryPoint to set ClaimVerifier", async function () {
-      await ethPool.connect(entryPoint).setClaimVerifier(newVerifier.address);
-      expect(await ethPool.claim_verifier()).to.equal(newVerifier.address);
+      await tokenPool.connect(entryPoint).setClaimVerifier(newVerifier.address);
+      expect(await tokenPool.claim_verifier()).to.equal(newVerifier.address);
     });
     it("Should prevent non-EntryPoint from setting ClaimVerifier", async function () {
       await expect(
-        ethPool.connect(user1).setClaimVerifier(newVerifier.address)
+        tokenPool.connect(user1).setClaimVerifier(newVerifier.address)
       ).to.be.revertedWith("AssetPool: Caller is not the EntryPoint");
     });
   });
@@ -890,34 +905,35 @@ describe("EthPool Contract Tests", function () {
       const nullifier = 123n;
       const secret = 456n;
 
+      await mockToken.connect(user1).approve(tokenPool.target, ethers.parseEther("10"));
+
       for (let i = 0; i < 10; i++) {
-        await ethPool
+        await tokenPool
           .connect(user1)
           .deposit(
             depositAmount,
             (
               await generate_precommitment(nullifier + BigInt(i), secret)
-            ).toString(),
-            { value: depositAmount }
+            ).toString()
           );
         const commitment = await calculateSolidityCommitment(
           nullifier + BigInt(i),
           secret,
           depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         );
         tsTree.insert(commitment);
       }
 
-      const contractSiblingsLeaf0 = await ethPool.getPath(0);
-      const contractSiblingsLeaf1 = await ethPool.getPath(1);
+      const contractSiblingsLeaf0 = await tokenPool.getPath(0);
+      const contractSiblingsLeaf1 = await tokenPool.getPath(1);
 
       expect(contractSiblingsLeaf0.length).to.equal(MAX_TREE_DEPTH);
       expect(contractSiblingsLeaf1.length).to.equal(MAX_TREE_DEPTH);
 
       for (let i = 0; i < 10; i++) {
         const tsSiblings = tsTree.getPath(i);
-        const contractSiblings = await ethPool.getPath(i);
+        const contractSiblings = await tokenPool.getPath(i);
         expect(tsSiblings.length).to.equal(contractSiblings.length);
         for (let j = 0; j < tsSiblings.length; j++) {
           expect(tsSiblings[j].toString()).to.equal(contractSiblings[j]);
@@ -925,17 +941,17 @@ describe("EthPool Contract Tests", function () {
       }
     });
     it("getPath should revert for invalid leafIndex", async function () {
-      await expect(ethPool.getPath(0)).to.be.revertedWith(
+      await expect(tokenPool.getPath(0)).to.be.revertedWith(
         "MerkleTree: leafIndex out of bounds"
       );
-      await ethPool
+      await mockToken.connect(user1).approve(tokenPool.target, ethers.parseEther("1"));
+      await tokenPool
         .connect(user1)
         .deposit(
           ethers.parseEther("1"),
-          (await generate_precommitment(125n, 2n)).toString(),
-          { value: ethers.parseEther("1") }
+          (await generate_precommitment(125n, 2n)).toString()
         );
-      await expect(ethPool.getPath(1)).to.be.revertedWith(
+      await expect(tokenPool.getPath(1)).to.be.revertedWith(
         "MerkleTree: leafIndex out of bounds"
       );
     });
@@ -946,19 +962,11 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
   let deployer: HardhatEthersSigner;
   let entryPoint: HardhatEthersSigner;
 
-  let ethPool: EthPool;
+  let tokenPool: TokenPool;
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
   let ClaimVerifier: ClaimHonkVerifier;
   let poseidon2: Poseidon2;
-
-  async function isKnownRoot(ethPool: EthPool, root: string): Promise<boolean> {
-    for (let i = 0; i < 100; i++) {
-      if ((await ethPool.roots(i)) === root) {
-        return true;
-      }
-    }
-    return false;
-  }
+  let mockToken: MockErc20;
 
   // setup
   // Alice bob charlie deposit variable amounts into the pool [validate all the root and contract state]
@@ -1010,18 +1018,27 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     poseidon2 = (await Poseidon2Factory.deploy()) as Poseidon2;
     await poseidon2.waitForDeployment();
 
-    const EthPoolFactory = await ethers.getContractFactory("EthPool", {
+    const mockTokenFactory = await ethers.getContractFactory(
+      "MockErc20",
+      deployer
+    );
+    mockToken = (await mockTokenFactory.deploy()) as MockErc20;
+    await mockToken.waitForDeployment();
+
+    const tokenPoolFactory = (await ethers.getContractFactory("TokenPool", {
       libraries: {
         Poseidon2: poseidon2.target,
       },
-    });
-    ethPool = (await EthPoolFactory.deploy(
+    })) as TokenPool__factory;
+
+    tokenPool = (await tokenPoolFactory.deploy(
       entryPoint.address, // Using signer as mock EntryPoint
+      mockToken.target,
       WithdrawVerifier.target,
       ClaimVerifier.target,
       MAX_TREE_DEPTH
-    )) as EthPool;
-    await ethPool.waitForDeployment();
+    )) as TokenPool;
+    await tokenPool.waitForDeployment();
 
     const [alice_signer, bob_signer, charlie_signer, david_signer] =
       await ethers.getSigners();
@@ -1063,28 +1080,40 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     };
 
     tsTree = new LeanIMT(MAX_TREE_DEPTH);
+
+    await mockToken.mint(alice.signer!.address, ethers.parseEther("100"));
+    await mockToken.mint(bob.signer!.address, ethers.parseEther("100"));
+    await mockToken.mint(charlie.signer!.address, ethers.parseEther("100"));
   });
 
   it("Happy Flow - Alice Bob Charlier Deposit", async function () {
-    await ethPool
+    await mockToken
+      .connect(alice.signer)
+      .approve(tokenPool.target, alice.depositAmount);
+    await mockToken
+      .connect(bob.signer)
+      .approve(tokenPool.target, bob.depositAmount);
+    await mockToken
+      .connect(charlie.signer)
+      .approve(tokenPool.target, charlie.depositAmount);
+
+    await tokenPool
       .connect(alice.signer)
       .deposit(
         alice.depositAmount,
         (
           await generate_precommitment(alice.lastUsedNullifier, alice.secret)
-        ).toString(),
-        { value: alice.depositAmount }
+        ).toString()
       );
-    await ethPool
+    await tokenPool
       .connect(bob.signer)
       .deposit(
         bob.depositAmount,
         (
           await generate_precommitment(bob.lastUsedNullifier, bob.secret)
-        ).toString(),
-        { value: bob.depositAmount }
+        ).toString()
       );
-    await ethPool
+    await tokenPool
       .connect(charlie.signer)
       .deposit(
         charlie.depositAmount,
@@ -1093,8 +1122,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
             charlie.lastUsedNullifier,
             charlie.secret
           )
-        ).toString(),
-        { value: charlie.depositAmount }
+        ).toString()
       );
 
     alice.currentLeafIndex = 0n;
@@ -1106,7 +1134,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         alice.lastUsedNullifier,
         alice.secret,
         alice.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
     tsTree.insert(
@@ -1114,7 +1142,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         bob.lastUsedNullifier,
         bob.secret,
         bob.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
     tsTree.insert(
@@ -1122,62 +1150,62 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         charlie.lastUsedNullifier,
         charlie.secret,
         charlie.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
-    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-    expect(await ethPool.nextLeafIndex()).to.equal(3);
+    expect(await tokenPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await tokenPool.nextLeafIndex()).to.equal(3);
 
-    expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(alice.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           alice.lastUsedNullifier,
           alice.secret,
           alice.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
-    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(bob.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           bob.lastUsedNullifier,
           bob.secret,
           bob.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
-    expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(charlie.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           charlie.lastUsedNullifier,
           charlie.secret,
           charlie.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
 
-    expect(await ethPool.getPath(alice.currentLeafIndex)).to.deep.equal(
+    expect(await tokenPool.getPath(alice.currentLeafIndex)).to.deep.equal(
       tsTree.getPath(Number(alice.currentLeafIndex)).map((x) => x.toString())
     );
-    expect(await ethPool.getPath(bob.currentLeafIndex)).to.deep.equal(
+    expect(await tokenPool.getPath(bob.currentLeafIndex)).to.deep.equal(
       tsTree.getPath(Number(bob.currentLeafIndex)).map((x) => x.toString())
     );
-    expect(await ethPool.getPath(charlie.currentLeafIndex)).to.deep.equal(
+    expect(await tokenPool.getPath(charlie.currentLeafIndex)).to.deep.equal(
       tsTree.getPath(Number(charlie.currentLeafIndex)).map((x) => x.toString())
     );
   });
 
-  it("Happy Flow - Alice Bob Charlier withdraw their respective amounts", async function () {
+  it("Happy Flow - Alice Bob Charlie withdraw their respective amounts", async function () {
     // Alice and bob do a partial withdraw, and charlie does a full with draw
     const alicePartialWithdrawAmount = ethers.parseEther("5");
     const bobPartialWithdrawAmount = ethers.parseEther("10");
     const charlieFullWithdrawAmount = ethers.parseEther("30");
 
-    const aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+    const aliceSiblings = await tokenPool.getPath(alice.currentLeafIndex);
 
     const [aliceNewNullifier, aliceNewSecret] = [
       randomBigInt(1000000n),
@@ -1188,7 +1216,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       alice.lastUsedNullifier.toString(),
       alice.secret.toString(),
       alice.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       alice.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       aliceNewNullifier.toString(),
@@ -1204,10 +1232,10 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     alice.lastUsedNullifier = aliceNewNullifier;
     alice.secret = aliceNewSecret;
     alice.depositAmount -= alicePartialWithdrawAmount;
-    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+    alice.currentLeafIndex = await tokenPool.nextLeafIndex();
 
     // withdraw
-    await ethPool.connect(alice.signer).withdraw(alice.signer.address,{
+    await tokenPool.connect(alice.signer).withdraw(alice.signer.address,{
       honkProof: aliceProof.proof,
       publicInputs: aliceProof.publicInputs,
     });
@@ -1217,7 +1245,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         alice.lastUsedNullifier,
         alice.secret,
         alice.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
@@ -1226,13 +1254,13 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       randomBigInt(1000000n),
     ];
 
-    const bobSiblings = await ethPool.getPath(bob.currentLeafIndex);
+    const bobSiblings = await tokenPool.getPath(bob.currentLeafIndex);
 
     const bobProof = await generateWithdrawTransferProof(
       bob.lastUsedNullifier.toString(),
       bob.secret.toString(),
       bob.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       bob.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       bobNewNullifier.toString(),
@@ -1248,9 +1276,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     bob.lastUsedNullifier = bobNewNullifier;
     bob.secret = bobNewSecret;
     bob.depositAmount -= bobPartialWithdrawAmount;
-    bob.currentLeafIndex = await ethPool.nextLeafIndex();
+    bob.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    await ethPool.connect(bob.signer).withdraw(bob.signer.address,{
+    await tokenPool.connect(bob.signer).withdraw(bob.signer.address,{
       honkProof: bobProof.proof,
       publicInputs: bobProof.publicInputs,
     });
@@ -1260,19 +1288,19 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         bob.lastUsedNullifier,
         bob.secret,
         bob.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
     const charlieNewNullifier = randomBigInt(1000000n);
     const charlieNewSecret = randomBigInt(1000000n);
 
-    const charlieSiblings = await ethPool.getPath(charlie.currentLeafIndex);
+    const charlieSiblings = await tokenPool.getPath(charlie.currentLeafIndex);
     const charlieProof = await generateWithdrawTransferProof(
       charlie.lastUsedNullifier.toString(),
       charlie.secret.toString(),
       charlie.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       charlie.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       charlieNewNullifier.toString(),
@@ -1288,9 +1316,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     charlie.lastUsedNullifier = charlieNewNullifier;
     charlie.secret = charlieNewSecret;
     charlie.depositAmount -= charlieFullWithdrawAmount;
-    charlie.currentLeafIndex = await ethPool.nextLeafIndex();
+    charlie.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    await ethPool.connect(charlie.signer).withdraw(charlie.signer.address,{
+    await tokenPool.connect(charlie.signer).withdraw(charlie.signer.address,{
       honkProof: charlieProof.proof,
       publicInputs: charlieProof.publicInputs,
     });
@@ -1300,39 +1328,39 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         charlie.lastUsedNullifier,
         charlie.secret,
         charlie.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
-    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-    expect(await ethPool.nextLeafIndex()).to.equal(6);
-    expect(await ethPool.getLeaf(alice.currentLeafIndex)).to.equal(
+    expect(await tokenPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await tokenPool.nextLeafIndex()).to.equal(6);
+    expect(await tokenPool.getLeaf(alice.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           alice.lastUsedNullifier,
           alice.secret,
           alice.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
-    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(bob.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           bob.lastUsedNullifier,
           bob.secret,
           bob.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
-    expect(await ethPool.getLeaf(charlie.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(charlie.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           charlie.lastUsedNullifier,
           charlie.secret,
           charlie.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
@@ -1348,12 +1376,12 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     const bobReceiverHash = await poseidon2Hash([bob.receiverSecret]);
     const davidReceiverHash = await poseidon2Hash([david.receiverSecret]);
 
-    let aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+    let aliceSiblings = await tokenPool.getPath(alice.currentLeafIndex);
     let aliceProof = await generateWithdrawTransferProof(
       alice.lastUsedNullifier.toString(),
       alice.secret.toString(),
       alice.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       alice.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       aliceNewNullifier.toString(),
@@ -1369,9 +1397,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     alice.lastUsedNullifier = aliceNewNullifier;
     alice.secret = aliceNewSecret;
     alice.depositAmount -= ethers.parseEther("1");
-    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+    alice.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    const bobTransferTx = await ethPool.connect(alice.signer).transfer(
+    const bobTransferTx = await tokenPool.connect(alice.signer).transfer(
       {
         honkProof: aliceProof.proof,
         publicInputs: aliceProof.publicInputs,
@@ -1384,7 +1412,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         alice.lastUsedNullifier,
         alice.secret,
         alice.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
     const bobReceipt = await bobTransferTx.wait();
@@ -1404,12 +1432,12 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       randomBigInt(1000000n),
     ];
 
-    aliceSiblings = await ethPool.getPath(alice.currentLeafIndex);
+    aliceSiblings = await tokenPool.getPath(alice.currentLeafIndex);
     aliceProof = await generateWithdrawTransferProof(
       alice.lastUsedNullifier.toString(),
       alice.secret.toString(),
       alice.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       alice.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       aliceNewNullifier.toString(),
@@ -1426,9 +1454,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     alice.lastUsedNullifier = aliceNewNullifier;
     alice.secret = aliceNewSecret;
     alice.depositAmount -= ethers.parseEther("2");
-    alice.currentLeafIndex = await ethPool.nextLeafIndex();
+    alice.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    const davidTransferTx = await ethPool.connect(alice.signer).transfer(
+    const davidTransferTx = await tokenPool.connect(alice.signer).transfer(
       {
         honkProof: aliceProof.proof,
         publicInputs: aliceProof.publicInputs,
@@ -1453,7 +1481,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         alice.lastUsedNullifier,
         alice.secret,
         alice.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
@@ -1476,7 +1504,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       randomBigInt(1000000n),
     ];
 
-    const bobSiblings = await ethPool.getPath(bob.currentLeafIndex);
+    const bobSiblings = await tokenPool.getPath(bob.currentLeafIndex);
 
     // const bobClaim
     // note_nonce: string, claim_value: string, existingNullifier: string, existingSecret: string,
@@ -1488,7 +1516,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       bob.lastUsedNullifier.toString(),
       bob.secret.toString(),
       bob.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       bob.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       bobNewNullifier.toString(),
@@ -1505,9 +1533,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     bob.lastUsedNullifier = bobNewNullifier;
     bob.secret = bobNewSecret;
     bob.depositAmount += ethers.parseEther("1");
-    bob.currentLeafIndex = await ethPool.nextLeafIndex();
+    bob.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    await ethPool.connect(bob.signer).claim({
+    await tokenPool.connect(bob.signer).claim({
       honkProof: bobClaimProof.proof,
       publicInputs: bobClaimProof.publicInputs,
     });
@@ -1517,23 +1545,23 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         bob.lastUsedNullifier,
         bob.secret,
         bob.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
-    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-    expect(await ethPool.getLeaf(bob.currentLeafIndex)).to.equal(
+    expect(await tokenPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await tokenPool.getLeaf(bob.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           bob.lastUsedNullifier,
           bob.secret,
           bob.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
 
-    expect(await ethPool.getPath(bob.currentLeafIndex)).to.deep.equal(
+    expect(await tokenPool.getPath(bob.currentLeafIndex)).to.deep.equal(
       tsTree.getPath(Number(bob.currentLeafIndex)).map((x) => x.toString())
     );
 
@@ -1544,7 +1572,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
       david.lastUsedNullifier.toString(),
       david.secret.toString(),
       david.depositAmount.toString(),
-      ETH_ADDRESS,
+      mockToken.target.toString(),
       david.currentLeafIndex.toString(),
       tsTree.getRoot().toString(),
       davidNewNullifier.toString(),
@@ -1561,9 +1589,9 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     david.lastUsedNullifier = davidNewNullifier;
     david.secret = davidNewSecret;
     david.depositAmount += ethers.parseEther("2");
-    david.currentLeafIndex = await ethPool.nextLeafIndex();
+    david.currentLeafIndex = await tokenPool.nextLeafIndex();
 
-    await ethPool.connect(david.signer).claim({
+    await tokenPool.connect(david.signer).claim({
       honkProof: davidClaimProof.proof,
       publicInputs: davidClaimProof.publicInputs,
     });
@@ -1573,33 +1601,33 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
         david.lastUsedNullifier,
         david.secret,
         david.depositAmount,
-        ETH_ADDRESS
+        mockToken.target.toString()
       )
     );
 
-    expect(await ethPool.currentRoot()).to.equal(tsTree.getRoot().toString());
-    expect(await ethPool.getLeaf(david.currentLeafIndex)).to.equal(
+    expect(await tokenPool.currentRoot()).to.equal(tsTree.getRoot().toString());
+    expect(await tokenPool.getLeaf(david.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           david.lastUsedNullifier,
           david.secret,
           david.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );
 
-    expect(await ethPool.getPath(david.currentLeafIndex)).to.deep.equal(
+    expect(await tokenPool.getPath(david.currentLeafIndex)).to.deep.equal(
       tsTree.getPath(Number(david.currentLeafIndex)).map((x) => x.toString())
     );
 
-    expect(await ethPool.getLeaf(david.currentLeafIndex)).to.equal(
+    expect(await tokenPool.getLeaf(david.currentLeafIndex)).to.equal(
       (
         await calculateSolidityCommitment(
           david.lastUsedNullifier,
           david.secret,
           david.depositAmount,
-          ETH_ADDRESS
+          mockToken.target.toString()
         )
       ).toString()
     );

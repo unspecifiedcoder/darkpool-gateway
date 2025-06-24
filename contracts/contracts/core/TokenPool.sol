@@ -22,27 +22,26 @@ contract TokenPool is IAssetPool {
 
     uint32 internal constant MAX_TREE_DEPTH = 32; // Default, can be configured
     uint32 internal constant ROOT_HISTORY_SIZE = 100;
-
     address public immutable entryPoint;
+
     uint32 public currentRootIndex;
+    uint256 public noteNonce;
     IERC20 public immutable asset;
 
     IVerifier public claimVerifier;
     IVerifier public withdrawVerifier;
-
     MerkleTreeLib.Tree internal tree;
 
     mapping(bytes32 => bool) public isNullifierSpent;
     mapping(uint256 _index => bytes32 _root) public roots;
+    mapping(bytes32 _noteID => Note _note) public notes;
 
     struct Note {
         uint256 value;
         bytes32 receiverHash;
         uint256 claimedBlockNumber;
     }
-    mapping(bytes32 _noteID => Note _note) public notes;
 
-    uint256 public noteNonce;
 
     modifier onlyEntryPoint() {
         require(
@@ -96,6 +95,9 @@ contract TokenPool is IAssetPool {
         uint256 amount,
         bytes32 precommitment
     ) external payable returns (uint32 leafIndex) {
+        require(amount > 0, "AssetPool: Invalid amount");
+        require(precommitment != bytes32(0), "AssetPool: Invalid precommitment");
+        
         bytes32 commitment = _hash_commitment(
             amount,
             address(asset),
@@ -110,6 +112,7 @@ contract TokenPool is IAssetPool {
     }
 
     function withdraw(
+        address receiver,
         ProofLib.WithdrawOrTransferParams memory params
     ) external validate_withdraw_proof(params)  returns (uint32 leafIndex) {
         // validate merkle tree root exists
@@ -129,7 +132,7 @@ contract TokenPool is IAssetPool {
         );
 
         // transfer asset to user
-        asset.safeTransfer(msg.sender, params.value());
+        asset.safeTransfer(receiver, params.value());
         return (0);
     }
 

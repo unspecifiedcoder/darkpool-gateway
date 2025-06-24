@@ -22,6 +22,7 @@ interface IAssetPool {
     ) external payable returns (uint32 leafIndex);
 
     function withdraw(
+        address receiver,
         ProofLib.WithdrawOrTransferParams memory params
     ) external returns (uint32 leafIndex);
 

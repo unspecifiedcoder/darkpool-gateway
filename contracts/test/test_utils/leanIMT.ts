@@ -7,6 +7,8 @@ export class LeanIMT {
     private MAX_DEPTH: number;
     private zeroValue: Fr = new Fr(0);
 
+
+
     constructor(maxDepth: number) {
         if (maxDepth < 1 || maxDepth > 256 || maxDepth % 2 !== 0) {
             throw new Error("Invalid maxDepth");
@@ -15,6 +17,10 @@ export class LeanIMT {
         this.MAX_DEPTH = maxDepth;
         this.tree = Array.from({ length: maxDepth + 1 }, () => []);
         this.tree[this.MAX_DEPTH] = [this.zeroValue]; // root
+    }
+
+    public getNextLeafIndex() : number {
+        return this.tree[0].length;
     }
 
     public printTree() {

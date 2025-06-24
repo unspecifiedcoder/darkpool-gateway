@@ -111,6 +111,7 @@ contract EthPool is IAssetPool  {
     }
 
     function withdraw(
+        address receiver,
         ProofLib.WithdrawOrTransferParams memory params
     ) external validate_withdraw_proof(params)  returns (uint32 leafIndex) {
         // validate merkle tree root exists
@@ -130,7 +131,7 @@ contract EthPool is IAssetPool  {
         );
 
         // transfer asset to user
-        payable(msg.sender).transfer(params.value());
+        payable(receiver).transfer(params.value());
         return (0);
     }
 

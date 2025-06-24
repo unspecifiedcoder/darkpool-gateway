@@ -27,8 +27,9 @@ interface IEntryPoint {
 
     function withdraw(
         address asset,
+        address receiver,
         ProofLib.WithdrawOrTransferParams memory params
-    ) external returns (uint32 leafIndex);
+    ) external  returns (uint32 leafIndex);
 
     function transfer(
         address asset,
@@ -41,5 +42,4 @@ interface IEntryPoint {
     ) external returns (uint32 leafIndex);
 
     // --- View Functions ---
-    function getPool(address asset) external view returns (address poolAddress);
 }
