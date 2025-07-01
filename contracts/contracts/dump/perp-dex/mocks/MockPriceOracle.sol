@@ -24,7 +24,7 @@ contract MockPriceOracle is IPriceOracle, Ownable {
      *              e.g., if ETH/USD is 2000, price should be 2000 * 1e18.
      */
     function setPrice(address baseAsset, address quoteAsset, uint256 price) public onlyOwner {
-        _prices[baseAsset][quoteAsset] = price;
+        _prices[baseAsset][quoteAsset] = price ;
         emit PriceSet(baseAsset, quoteAsset, price);
     }
 

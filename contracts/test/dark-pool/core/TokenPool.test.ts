@@ -5,9 +5,9 @@ import {
   TokenPool,
   Poseidon2,
   WithdrawTransferHonkVerifier,
-  MockErc20,
+  MockERC20,
   TokenPool__factory,
-} from "../../typechain-types"; // Adjust paths
+} from "../../../typechain-types"; // Adjust paths
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   calculateSolidityCommitment,
@@ -33,7 +33,7 @@ describe("TokenPool Contract Tests", function () {
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
   let ClaimVerifier: ClaimHonkVerifier;
   let poseidon2: Poseidon2;
-  let mockToken: MockErc20;
+  let mockToken: MockERC20;
 
   beforeEach(async function () {
     [deployer, user1, user2, entryPoint] = await ethers.getSigners();
@@ -62,9 +62,13 @@ describe("TokenPool Contract Tests", function () {
     poseidon2 = (await Poseidon2Factory.deploy()) as Poseidon2;
     await poseidon2.waitForDeployment();
 
-    const MockErc20Factory = await ethers.getContractFactory("MockErc20");
+    const MockERC20Factory = await ethers.getContractFactory("MockERC20");
 
-    mockToken = (await MockErc20Factory.deploy()) as MockErc20;
+    mockToken = (await MockERC20Factory.deploy(
+      "MockERC20",
+      "MockERC20",
+      18
+    )) as MockERC20;
     await mockToken.waitForDeployment();
 
     const TokenPoolFactory = await ethers.getContractFactory("TokenPool", {
@@ -966,7 +970,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
   let ClaimVerifier: ClaimHonkVerifier;
   let poseidon2: Poseidon2;
-  let mockToken: MockErc20;
+  let mockToken: MockERC20;
 
   // setup
   // Alice bob charlie deposit variable amounts into the pool [validate all the root and contract state]
@@ -1019,10 +1023,14 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     await poseidon2.waitForDeployment();
 
     const mockTokenFactory = await ethers.getContractFactory(
-      "MockErc20",
+      "MockERC20",
       deployer
     );
-    mockToken = (await mockTokenFactory.deploy()) as MockErc20;
+    mockToken = (await mockTokenFactory.deploy(
+      "MockERC20",
+      "MockERC20",
+      18
+    )) as MockERC20;
     await mockToken.waitForDeployment();
 
     const tokenPoolFactory = (await ethers.getContractFactory("TokenPool", {

@@ -11,7 +11,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeDecimalMath} from "../libraries/SafeDecimalMath.sol"; // Using our illustrative library
 
 // This is a simplified ClearingHouse. Many production features are omitted for clarity.
-contract ClearingHouse is IClearingHouse, Ownable {
+contract ClearingHouseTemp is Ownable {
     using SafeDecimalMath for uint256;
 
     // --- Constants ---
@@ -136,7 +136,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     // --- Admin Functions ---
     function setPositionLedger(
         address newPositionLedger
-    ) external override onlyOwner {
+    ) external  onlyOwner {
         require(
             newPositionLedger != address(0),
             "CH: Invalid position ledger address"
@@ -147,7 +147,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function setCollateralToken(
         address _newCollateralToken,
         bool isSupported /* ignored */
-    ) external override onlyOwner {
+    ) external  onlyOwner {
         require(
             _newCollateralToken != address(0),
             "CH: Invalid collateral token address"
@@ -161,7 +161,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
         uint256 _takerFee,
         uint256 _makerFee,
         uint256 _liquidationFee
-    ) external override onlyOwner {
+    ) external  onlyOwner {
         takerFeeBps = _takerFee;
         makerFeeBps = _makerFee;
         liquidationFeeBps = _liquidationFee;
@@ -194,7 +194,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function setPriceOracle(
         address baseAsset,
         address newOracle
-    ) external override onlyOwner {
+    ) external  onlyOwner {
         require(supportedBaseAssets[baseAsset], "CH: Base asset not supported");
         require(newOracle != address(0), "CH: Invalid oracle address");
         priceOracles[baseAsset] = IPriceOracle(newOracle);
@@ -203,7 +203,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function setVirtualAmm(
         address baseAsset,
         address newAmm
-    ) external override onlyOwner {
+    ) external  onlyOwner {
         require(supportedBaseAssets[baseAsset], "CH: Base asset not supported");
         require(newAmm != address(0), "CH: Invalid AMM address");
         virtualAmms[baseAsset] = IVirtualAMM(newAmm);
@@ -213,7 +213,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function depositCollateral(
         address,
         /*collateralTokenAddress - ignored, uses contract's*/ uint256 amount
-    ) external override {
+    ) external  {
         if (amount == 0) revert InvalidAmount();
         // For this version, we only support the single `collateralToken`
         // require(collateralTokenAddress == address(collateralToken), "CH: Unsupported collateral token");
@@ -228,13 +228,13 @@ contract ClearingHouse is IClearingHouse, Ownable {
         );
         require(success, "CH: Collateral transfer failed");
 
-        emit CollateralDeposited(msg.sender, address(collateralToken), amount);
+        // emit CollateralDeposited(msg.sender, address(collateralToken), amount);
     }
 
     function withdrawCollateral(
         address,
         /*collateralTokenAddress - ignored*/ uint256 amount
-    ) external override {
+    ) external  {
         if (amount == 0) revert InvalidAmount();
         // require(collateralTokenAddress == address(collateralToken), "CH: Unsupported collateral token");
 
@@ -257,458 +257,458 @@ contract ClearingHouse is IClearingHouse, Ownable {
         bool success = collateralToken.transfer(msg.sender, amount);
         require(success, "CH: Collateral transfer failed");
 
-        emit CollateralWithdrawn(msg.sender, address(collateralToken), amount);
+        // emit CollateralWithdrawn(msg.sender, address(collateralToken), amount);
     }
 
     function getAccountBalance(
         address trader,
         address /*_collateralToken*/
-    ) external view override returns (uint256) {
+    ) external view  returns (uint256) {
         // require(_collateralToken == address(collateralToken), "CH: Unsupported collateral token");
         return traderBalances[trader];
     }
 
     // --- Trading Logic ---
 
-    /**
-     * @notice Opens a new position or increases an existing one.
-     * @param baseAsset The base asset to trade (e.g., vETH).
-     * @param side LONG or SHORT.
-     * @param marginAmount Amount of collateral (in quote asset units, e.g., USDC) to allocate as margin.
-     * @param leverage Leverage factor (e.g., 10 * LEVERAGE_PRECISION for 10x).
-     * @param minBaseAmountOut Slippage protection: minimum base asset amount expected for the trade.
-     */
-    function openPosition(
-        address baseAsset,
-        IPositionLedger.PositionSide side,
-        uint256 marginAmount, // In collateral's native decimals
-        uint256 leverage, // Scaled by LEVERAGE_PRECISION
-        uint256 minBaseAmountOut // In base asset's scaled units (e.g., 1e18 for ETH)
-    ) external override {
-        // --- Validations ---
-        if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
-        if (marginAmount == 0) revert InvalidAmount();
-        if (leverage == 0 || leverage > (100 * LEVERAGE_PRECISION))
-            revert InvalidLeverage(); // Max 100x
-        // Add check: initialMarginRatioRequirement (e.g., 1/leverage must be >= min threshold)
+    // /**
+    //  * @notice Opens a new position or increases an existing one.
+    //  * @param baseAsset The base asset to trade (e.g., vETH).
+    //  * @param side LONG or SHORT.
+    //  * @param marginAmount Amount of collateral (in quote asset units, e.g., USDC) to allocate as margin.
+    //  * @param leverage Leverage factor (e.g., 10 * LEVERAGE_PRECISION for 10x).
+    //  * @param minBaseAmountOut Slippage protection: minimum base asset amount expected for the trade.
+    //  */
+    // function openPosition(
+    //     address baseAsset,
+    //     IPositionLedger.PositionSide side,
+    //     uint256 marginAmount, // In collateral's native decimals
+    //     uint256 leverage, // Scaled by LEVERAGE_PRECISION
+    //     uint256 minBaseAmountOut // In base asset's scaled units (e.g., 1e18 for ETH)
+    // ) external  {
+    //     // --- Validations ---
+    //     if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
+    //     if (marginAmount == 0) revert InvalidAmount();
+    //     if (leverage == 0 || leverage > (100 * LEVERAGE_PRECISION))
+    //         revert InvalidLeverage(); // Max 100x
+    //     // Add check: initialMarginRatioRequirement (e.g., 1/leverage must be >= min threshold)
 
-        IVirtualAMM amm = virtualAmms[baseAsset];
-        if (address(amm) == address(0)) revert AmmNotSet();
+    //     IVirtualAMM amm = virtualAmms[baseAsset];
+    //     if (address(amm) == address(0)) revert AmmNotSet();
 
-        if (traderBalances[msg.sender] < marginAmount)
-            revert InsufficientFreeCollateral();
+    //     if (traderBalances[msg.sender] < marginAmount)
+    //         revert InsufficientFreeCollateral();
 
-        // --- Calculations ---
-        // Position size in quote asset terms (e.g., USDC terms)
-        // positionSizeQuote = marginAmount * (leverage / LEVERAGE_PRECISION)
-        uint256 positionSizeQuote = marginAmount.mul(
-            leverage,
-            LEVERAGE_PRECISION
-        );
+    //     // --- Calculations ---
+    //     // Position size in quote asset terms (e.g., USDC terms)
+    //     // positionSizeQuote = marginAmount * (leverage / LEVERAGE_PRECISION)
+    //     uint256 positionSizeQuote = marginAmount.mul(
+    //         leverage,
+    //         LEVERAGE_PRECISION
+    //     );
 
-        // If collateralDecimals is not 18, and vAMM expects 18-decimal quote amounts, convert.
-        // For now, let's assume vAMM's quoteAssetReserve is scaled to PRICE_PRECISION (1e18)
-        // and we need to convert positionSizeQuote to that scale if collateralDecimals differ.
-        uint256 positionSizeQuoteScaledForAmm; // = positionSizeQuote * (PRICE_PRECISION / (10**collateralDecimals));
-        if (collateralDecimals < 18) {
-            positionSizeQuoteScaledForAmm =
-                positionSizeQuote *
-                (10 ** (18 - collateralDecimals));
-        } else if (collateralDecimals > 18) {
-            positionSizeQuoteScaledForAmm =
-                positionSizeQuote /
-                (10 ** (collateralDecimals - 18));
-        } else {
-            positionSizeQuoteScaledForAmm = positionSizeQuote; // Already 18 decimals
-        }
+    //     // If collateralDecimals is not 18, and vAMM expects 18-decimal quote amounts, convert.
+    //     // For now, let's assume vAMM's quoteAssetReserve is scaled to PRICE_PRECISION (1e18)
+    //     // and we need to convert positionSizeQuote to that scale if collateralDecimals differ.
+    //     uint256 positionSizeQuoteScaledForAmm; // = positionSizeQuote * (PRICE_PRECISION / (10**collateralDecimals));
+    //     if (collateralDecimals < 18) {
+    //         positionSizeQuoteScaledForAmm =
+    //             positionSizeQuote *
+    //             (10 ** (18 - collateralDecimals));
+    //     } else if (collateralDecimals > 18) {
+    //         positionSizeQuoteScaledForAmm =
+    //             positionSizeQuote /
+    //             (10 ** (collateralDecimals - 18));
+    //     } else {
+    //         positionSizeQuoteScaledForAmm = positionSizeQuote; // Already 18 decimals
+    //     }
 
-        // Get the amount of base asset from swapping quote asset in the vAMM
-        // This also gives us the effective entry price.
-        uint256 actualBaseAmount; // This will be the size of the position in base asset units
-        uint256 newAmmBaseReserve;
-        uint256 newAmmQuoteReserve;
+    //     // Get the amount of base asset from swapping quote asset in the vAMM
+    //     // This also gives us the effective entry price.
+    //     uint256 actualBaseAmount; // This will be the size of the position in base asset units
+    //     uint256 newAmmBaseReserve;
+    //     uint256 newAmmQuoteReserve;
 
-        if (side == IPositionLedger.PositionSide.LONG) {
-            // Trader is "buying" base asset with their leveraged quote amount
-            (actualBaseAmount, newAmmBaseReserve, newAmmQuoteReserve) = amm
-                .swapQuoteForBasePreview(positionSizeQuoteScaledForAmm);
-        } else {
-            // SHORT
-            // Trader is "selling" base asset (conceptually) for quote amount
-            // To get base amount for a short, we see how much base we'd need to sell to get positionSizeQuoteScaledForAmm
-            // This is effectively swapBaseForQuote, but input is quote.
-            // A simpler way: treat short as borrowing base and selling it.
-            // The vAMM interaction for a short: quote reserve increases, base reserve decreases.
-            // So, for a short, the trader effectively ADDS base to the AMM and REMOVES quote from it.
-            // The size of the short is `actualBaseAmount`. The vAMM reflects this by base increasing, quote decreasing.
-            // So, input to AMM is actualBaseAmount, output is positionSizeQuoteScaledForAmm.
-            // We need to find actualBaseAmount such that output is positionSizeQuoteScaledForAmm.
-            // dy = (dx*y) / (x+dx) => positionSizeQuoteScaledForAmm = (actualBaseAmount * amm.quoteAssetReserve()) / (amm.baseAssetReserve() + actualBaseAmount)
-            // This needs an inverse calculation or we assume `getBaseAmountOut` handles the directionality.
-            // Let's re-verify vAMM logic for shorts.
-            // If opening LONG: trader gives quote, takes base. AMM: quote_in, base_out. Reserves: quote_v+, base_v-
-            // If opening SHORT: trader gives base, takes quote. AMM: base_in, quote_out. Reserves: base_v+, quote_v-
-            (actualBaseAmount, newAmmBaseReserve, newAmmQuoteReserve) = amm
-                .swapBaseForQuotePreview(positionSizeQuoteScaledForAmm);
-            // ^ This is incorrect for shorting using quote_amount for leverage.
-            // For a short, you want to determine how much *base* asset corresponds to your `positionSizeQuote`.
-            // The vAMM movement is: base reserves increase (as if trader sold base), quote reserves decrease.
-            // So, effectively, the trader *adds* `actualBaseAmount` to the vAMM's base side,
-            // and the AMM gives back `positionSizeQuoteScaledForAmm`.
-            // This means we need `getBaseAmountIn(positionSizeQuoteScaledForAmm)`
-            // Or, using existing preview: we're effectively doing a "reverse" of swapBaseForQuote.
-            // Let's assume for now the AMM's `swapBaseForQuotePreview` when opening short means:
-            // input: how much base I want to short, output: how much quote I get.
-            // But we have `marginAmount` and `leverage` (giving `positionSizeQuote`).
-            // So, we need to find `baseAmount` such that if we sold it, we'd get `positionSizeQuote`.
-            // This is `getBaseAmountOut` if we input `positionSizeQuote`.
+    //     if (side == IPositionLedger.PositionSide.LONG) {
+    //         // Trader is "buying" base asset with their leveraged quote amount
+    //         (actualBaseAmount, newAmmBaseReserve, newAmmQuoteReserve) = amm
+    //             .swapQuoteForBasePreview(positionSizeQuoteScaledForAmm);
+    //     } else {
+    //         // SHORT
+    //         // Trader is "selling" base asset (conceptually) for quote amount
+    //         // To get base amount for a short, we see how much base we'd need to sell to get positionSizeQuoteScaledForAmm
+    //         // This is effectively swapBaseForQuote, but input is quote.
+    //         // A simpler way: treat short as borrowing base and selling it.
+    //         // The vAMM interaction for a short: quote reserve increases, base reserve decreases.
+    //         // So, for a short, the trader effectively ADDS base to the AMM and REMOVES quote from it.
+    //         // The size of the short is `actualBaseAmount`. The vAMM reflects this by base increasing, quote decreasing.
+    //         // So, input to AMM is actualBaseAmount, output is positionSizeQuoteScaledForAmm.
+    //         // We need to find actualBaseAmount such that output is positionSizeQuoteScaledForAmm.
+    //         // dy = (dx*y) / (x+dx) => positionSizeQuoteScaledForAmm = (actualBaseAmount * amm.quoteAssetReserve()) / (amm.baseAssetReserve() + actualBaseAmount)
+    //         // This needs an inverse calculation or we assume `getBaseAmountOut` handles the directionality.
+    //         // Let's re-verify vAMM logic for shorts.
+    //         // If opening LONG: trader gives quote, takes base. AMM: quote_in, base_out. Reserves: quote_v+, base_v-
+    //         // If opening SHORT: trader gives base, takes quote. AMM: base_in, quote_out. Reserves: base_v+, quote_v-
+    //         (actualBaseAmount, newAmmBaseReserve, newAmmQuoteReserve) = amm
+    //             .swapBaseForQuotePreview(positionSizeQuoteScaledForAmm);
+    //         // ^ This is incorrect for shorting using quote_amount for leverage.
+    //         // For a short, you want to determine how much *base* asset corresponds to your `positionSizeQuote`.
+    //         // The vAMM movement is: base reserves increase (as if trader sold base), quote reserves decrease.
+    //         // So, effectively, the trader *adds* `actualBaseAmount` to the vAMM's base side,
+    //         // and the AMM gives back `positionSizeQuoteScaledForAmm`.
+    //         // This means we need `getBaseAmountIn(positionSizeQuoteScaledForAmm)`
+    //         // Or, using existing preview: we're effectively doing a "reverse" of swapBaseForQuote.
+    //         // Let's assume for now the AMM's `swapBaseForQuotePreview` when opening short means:
+    //         // input: how much base I want to short, output: how much quote I get.
+    //         // But we have `marginAmount` and `leverage` (giving `positionSizeQuote`).
+    //         // So, we need to find `baseAmount` such that if we sold it, we'd get `positionSizeQuote`.
+    //         // This is `getBaseAmountOut` if we input `positionSizeQuote`.
 
-            // Correct for short: we are defining the *size* of the position in quote terms.
-            // The AMM interaction is as if the trader is *selling* `actualBaseAmount` of base asset.
-            // So, the vAMM's base reserves will *increase*, and quote reserves will *decrease*.
-            // The amount of base asset that creates this quote value is found by `getBaseAmountOut`.
-            // (amm.swapQuoteForBasePreview is for BUYING base with quote.)
-            // We need to calculate how much base asset corresponds to positionSizeQuoteScaledForAmm
-            // effectively, the trader borrows `actualBaseAmount` and sells it into the AMM.
-            // The AMM's base reserve increases by `actualBaseAmount`, quote reserve decreases by `positionSizeQuoteScaledForAmm`.
-            // So we need to call `amm.swapBaseForQuote(actualBaseAmount)` which would return `positionSizeQuoteScaledForAmm`.
-            // We need to find `actualBaseAmount`. This requires an inverse of `_getQuoteAmountOut`.
-            // dx = (dy * x) / (y - dy)
+    //         // Correct for short: we are defining the *size* of the position in quote terms.
+    //         // The AMM interaction is as if the trader is *selling* `actualBaseAmount` of base asset.
+    //         // So, the vAMM's base reserves will *increase*, and quote reserves will *decrease*.
+    //         // The amount of base asset that creates this quote value is found by `getBaseAmountOut`.
+    //         // (amm.swapQuoteForBasePreview is for BUYING base with quote.)
+    //         // We need to calculate how much base asset corresponds to positionSizeQuoteScaledForAmm
+    //         // effectively, the trader borrows `actualBaseAmount` and sells it into the AMM.
+    //         // The AMM's base reserve increases by `actualBaseAmount`, quote reserve decreases by `positionSizeQuoteScaledForAmm`.
+    //         // So we need to call `amm.swapBaseForQuote(actualBaseAmount)` which would return `positionSizeQuoteScaledForAmm`.
+    //         // We need to find `actualBaseAmount`. This requires an inverse of `_getQuoteAmountOut`.
+    //         // dx = (dy * x) / (y - dy)
             
-            // (uint256 currentAmmBase, uint256 currentAmmQuote) = amm
-            //     .getReserves();
-            // uint256 numerator = positionSizeQuoteScaledForAmm * currentAmmBase;
-            // uint256 denominator = currentAmmQuote -
-            //     positionSizeQuoteScaledForAmm; // this is dy
-            // if (currentAmmQuote <= positionSizeQuoteScaledForAmm)
-            //     revert InsufficientLiquidity(); // Cannot take out more quote than available
-            // actualBaseAmount = numerator / denominator;
+    //         // (uint256 currentAmmBase, uint256 currentAmmQuote) = amm
+    //         //     .getReserves();
+    //         // uint256 numerator = positionSizeQuoteScaledForAmm * currentAmmBase;
+    //         // uint256 denominator = currentAmmQuote -
+    //         //     positionSizeQuoteScaledForAmm; // this is dy
+    //         // if (currentAmmQuote <= positionSizeQuoteScaledForAmm)
+    //         //     revert InsufficientLiquidity(); // Cannot take out more quote than available
+    //         // actualBaseAmount = numerator / denominator;
 
-            // // Simulate the state change for preview to get new reserves
-            // newAmmBaseReserve = currentAmmBase + actualBaseAmount;
-            // newAmmQuoteReserve =
-            //     currentAmmQuote -
-            //     positionSizeQuoteScaledForAmm;
-            (
-                actualBaseAmount,
-                newAmmBaseReserve,
-                newAmmQuoteReserve
-            ) = _computeShortSize(amm, positionSizeQuoteScaledForAmm);
-        }
+    //         // // Simulate the state change for preview to get new reserves
+    //         // newAmmBaseReserve = currentAmmBase + actualBaseAmount;
+    //         // newAmmQuoteReserve =
+    //         //     currentAmmQuote -
+    //         //     positionSizeQuoteScaledForAmm;
+    //         (
+    //             actualBaseAmount,
+    //             newAmmBaseReserve,
+    //             newAmmQuoteReserve
+    //         ) = _computeShortSize(amm, positionSizeQuoteScaledForAmm);
+    //     }
 
-        if (actualBaseAmount < minBaseAmountOut) revert SlippageExceeded();
-        if (actualBaseAmount == 0) revert InsufficientLiquidity(); // Should be caught by AMM usually
+    //     if (actualBaseAmount < minBaseAmountOut) revert SlippageExceeded();
+    //     if (actualBaseAmount == 0) revert InsufficientLiquidity(); // Should be caught by AMM usually
 
-        uint256 entryPrice = positionSizeQuoteScaledForAmm.mul(
-            PRICE_PRECISION,
-            actualBaseAmount
-        ); // quote/base, scaled
+    //     uint256 entryPrice = positionSizeQuoteScaledForAmm.mul(
+    //         PRICE_PRECISION,
+    //         actualBaseAmount
+    //     ); // quote/base, scaled
 
-        // --- Calculate Fee ---
-        uint256 feeAmountQuoteScaled = positionSizeQuoteScaledForAmm.mul(
-            takerFeeBps,
-            FEE_PRECISION
-        );
-        // Convert fee back to collateral's native decimals
-        uint256 feeAmountCollateralDecimals;
-        if (collateralDecimals < 18) {
-            feeAmountCollateralDecimals =
-                feeAmountQuoteScaled /
-                (10 ** (18 - collateralDecimals));
-        } else if (collateralDecimals > 18) {
-            feeAmountCollateralDecimals =
-                feeAmountQuoteScaled *
-                (10 ** (collateralDecimals - 18));
-        } else {
-            feeAmountCollateralDecimals = feeAmountQuoteScaled;
-        }
+    //     // --- Calculate Fee ---
+    //     uint256 feeAmountQuoteScaled = positionSizeQuoteScaledForAmm.mul(
+    //         takerFeeBps,
+    //         FEE_PRECISION
+    //     );
+    //     // Convert fee back to collateral's native decimals
+    //     uint256 feeAmountCollateralDecimals;
+    //     if (collateralDecimals < 18) {
+    //         feeAmountCollateralDecimals =
+    //             feeAmountQuoteScaled /
+    //             (10 ** (18 - collateralDecimals));
+    //     } else if (collateralDecimals > 18) {
+    //         feeAmountCollateralDecimals =
+    //             feeAmountQuoteScaled *
+    //             (10 ** (collateralDecimals - 18));
+    //     } else {
+    //         feeAmountCollateralDecimals = feeAmountQuoteScaled;
+    //     }
 
-        if (
-            traderBalances[msg.sender] <
-            marginAmount + feeAmountCollateralDecimals
-        ) {
-            revert InsufficientFreeCollateral(); // Not enough for margin + fee
-        }
+    //     if (
+    //         traderBalances[msg.sender] <
+    //         marginAmount + feeAmountCollateralDecimals
+    //     ) {
+    //         revert InsufficientFreeCollateral(); // Not enough for margin + fee
+    //     }
 
-        // --- State Updates ---
-        // 1. Deduct margin and fee from trader's free balance
-        traderBalances[msg.sender] = traderBalances[msg.sender]
-            .sub(marginAmount)
-            .sub(feeAmountCollateralDecimals);
-        // TODO: Send fee to treasury/insurance fund
+    //     // --- State Updates ---
+    //     // 1. Deduct margin and fee from trader's free balance
+    //     traderBalances[msg.sender] = traderBalances[msg.sender]
+    //         .sub(marginAmount)
+    //         .sub(feeAmountCollateralDecimals);
+    //     // TODO: Send fee to treasury/insurance fund
 
-        // 2. Update vAMM reserves (actually perform the swap)
-        if (side == IPositionLedger.PositionSide.LONG) {
-            amm.swapQuoteForBase(positionSizeQuoteScaledForAmm); // This will update reserves
-        } else {
-            // SHORT
-            amm.swapBaseForQuote(actualBaseAmount); // This will update reserves
-        }
+    //     // 2. Update vAMM reserves (actually perform the swap)
+    //     if (side == IPositionLedger.PositionSide.LONG) {
+    //         amm.swapQuoteForBase(positionSizeQuoteScaledForAmm); // This will update reserves
+    //     } else {
+    //         // SHORT
+    //         amm.swapBaseForQuote(actualBaseAmount); // This will update reserves
+    //     }
 
-        // 3. Update PositionLedger
-        // For simplicity, if position exists, this becomes an increase. A real system might differentiate.
-        IPositionLedger.Position memory existingPosition = positionLedger
-            .getPosition(msg.sender, baseAsset);
-        if (existingPosition.size == 0) {
-            positionLedger.openPosition(
-                msg.sender,
-                baseAsset,
-                side,
-                actualBaseAmount, // Size in base asset units
-                marginAmount, // Margin in collateral's native decimals
-                entryPrice // Scaled by PRICE_PRECISION
-            );
-        } else {
-            // Check if sides are compatible for increasing
-            if (existingPosition.side != side) {
-                // To simplify, disallow opening a new position in the opposite direction
-                // User should close the existing one first.
-                // A more advanced system could allow reducing or flipping.
-                revert(
-                    "CH: Position with opposite side exists. Close it first."
-                );
-            }
-            positionLedger.increasePosition(
-                msg.sender,
-                baseAsset,
-                actualBaseAmount, // additional size
-                marginAmount, // additional margin
-                entryPrice // price for this specific addition
-            );
-        }
+    //     // 3. Update PositionLedger
+    //     // For simplicity, if position exists, this becomes an increase. A real system might differentiate.
+    //     IPositionLedger.Position memory existingPosition = positionLedger
+    //         .getPosition(msg.sender, baseAsset);
+    //     if (existingPosition.size == 0) {
+    //         positionLedger.openPosition(
+    //             msg.sender,
+    //             baseAsset,
+    //             side,
+    //             actualBaseAmount, // Size in base asset units
+    //             marginAmount, // Margin in collateral's native decimals
+    //             entryPrice // Scaled by PRICE_PRECISION
+    //         );
+    //     } else {
+    //         // Check if sides are compatible for increasing
+    //         if (existingPosition.side != side) {
+    //             // To simplify, disallow opening a new position in the opposite direction
+    //             // User should close the existing one first.
+    //             // A more advanced system could allow reducing or flipping.
+    //             revert(
+    //                 "CH: Position with opposite side exists. Close it first."
+    //             );
+    //         }
+    //         positionLedger.increasePosition(
+    //             msg.sender,
+    //             baseAsset,
+    //             actualBaseAmount, // additional size
+    //             marginAmount, // additional margin
+    //             entryPrice // price for this specific addition
+    //         );
+    //     }
 
-        emit PositionOpenedCH(
-            msg.sender,
-            baseAsset,
-            side,
-            actualBaseAmount,
-            positionSizeQuote, // Not scaled, in original collateral decimals * leverage
-            marginAmount,
-            entryPrice,
-            feeAmountCollateralDecimals
-        );
-    }
+    //     emit PositionOpenedCH(
+    //         msg.sender,
+    //         baseAsset,
+    //         side,
+    //         actualBaseAmount,
+    //         positionSizeQuote, // Not scaled, in original collateral decimals * leverage
+    //         marginAmount,
+    //         entryPrice,
+    //         feeAmountCollateralDecimals
+    //     );
+    // }
 
     /// @dev Given a quote-denominated positionSize, returns (baseAmountToSell, newBaseReserve, newQuoteReserve)
-    function _computeShortSize(
-        IVirtualAMM amm,
-        uint256 positionSizeQuoteScaled
-    )
-        private
-        view
-        returns (
-            uint256 actualBaseAmount,
-            uint256 newAmmBaseReserve,
-            uint256 newAmmQuoteReserve
-        )
-    {
-        (uint256 currentBase, uint256 currentQuote) = amm.getReserves();
-        // Avoid stack slots: do numerator/denominator in-line
-        require(
-            currentQuote > positionSizeQuoteScaled,
-            "InsufficientLiquidity"
-        );
-        actualBaseAmount =
-            (positionSizeQuoteScaled * currentBase) /
-            (currentQuote - positionSizeQuoteScaled);
-        newAmmBaseReserve = currentBase + actualBaseAmount;
-        newAmmQuoteReserve = currentQuote - positionSizeQuoteScaled;
-    }
+    // function _computeShortSize(
+    //     IVirtualAMM amm,
+    //     uint256 positionSizeQuoteScaled
+    // )
+    //     private
+    //     view
+    //     returns (
+    //         uint256 actualBaseAmount,
+    //         uint256 newAmmBaseReserve,
+    //         uint256 newAmmQuoteReserve
+    //     )
+    // {
+    //     (uint256 currentBase, uint256 currentQuote) = amm.getReserves();
+    //     // Avoid stack slots: do numerator/denominator in-line
+    //     require(
+    //         currentQuote > positionSizeQuoteScaled,
+    //         "InsufficientLiquidity"
+    //     );
+    //     actualBaseAmount =
+    //         (positionSizeQuoteScaled * currentBase) /
+    //         (currentQuote - positionSizeQuoteScaled);
+    //     newAmmBaseReserve = currentBase + actualBaseAmount;
+    //     newAmmQuoteReserve = currentQuote - positionSizeQuoteScaled;
+    // }
 
-    function closePosition(
-        address baseAsset,
-        uint256 minQuoteAmountOut // Slippage: Min collateral to get back (after PnL, before fees)
-    ) external override {
-        // --- Validations ---
-        if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
-        IVirtualAMM amm = virtualAmms[baseAsset];
-        if (address(amm) == address(0)) revert AmmNotSet();
+    // function closePosition(
+    //     address baseAsset,
+    //     uint256 minQuoteAmountOut // Slippage: Min collateral to get back (after PnL, before fees)
+    // ) external  {
+    //     // --- Validations ---
+    //     if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
+    //     IVirtualAMM amm = virtualAmms[baseAsset];
+    //     if (address(amm) == address(0)) revert AmmNotSet();
 
-        IPositionLedger.Position memory pos = positionLedger.getPosition(
-            msg.sender,
-            baseAsset
-        );
-        if (pos.size == 0) revert PositionCannotBeClosed();
+    //     IPositionLedger.Position memory pos = positionLedger.getPosition(
+    //         msg.sender,
+    //         baseAsset
+    //     );
+    //     if (pos.size == 0) revert PositionCannotBeClosed();
 
-        // --- Calculations ---
-        // Determine the quote value of the position at current market price (from vAMM)
-        // This is the amount of quote asset the trader gets back by closing the position in the vAMM.
-        uint256 quoteValueFromAmm; // Scaled by PRICE_PRECISION
-        uint256 actualBaseAmountToTrade = pos.size; // Amount of base asset involved in closing
+    //     // --- Calculations ---
+    //     // Determine the quote value of the position at current market price (from vAMM)
+    //     // This is the amount of quote asset the trader gets back by closing the position in the vAMM.
+    //     uint256 quoteValueFromAmm; // Scaled by PRICE_PRECISION
+    //     uint256 actualBaseAmountToTrade = pos.size; // Amount of base asset involved in closing
 
-        if (pos.side == IPositionLedger.PositionSide.LONG) {
-            // Trader sells base to get quote
-            (quoteValueFromAmm, , ) = amm.swapBaseForQuotePreview(
-                actualBaseAmountToTrade
-            );
-        } else {
-            // SHORT
-            // Trader buys base back with quote
-            (quoteValueFromAmm, , ) = amm.swapQuoteForBasePreview(
-                actualBaseAmountToTrade
-            );
-            // This is incorrect logic for short closing.
-            // If short, trader needs to *buy* `actualBaseAmountToTrade` from the AMM.
-            // The cost to do this is `costInQuote`.
-            // (amm.swapQuoteForBasePreview returns base out for quote in)
-            // We need how much quote it costs to buy `actualBaseAmountToTrade`. This needs an inverse function.
-            // OR: the size of the short position was `pos.size` (base).
-            // When closing, the trader "buys back" this `pos.size` from the AMM.
-            // The AMM interaction: base reserves decrease, quote reserves increase.
-            // The AMM receives `costInQuote` and gives out `pos.size` of base.
-            // This is `getQuoteAmountIn(pos.size)` or derived from `swapBaseForQuotePreview` if interpreted as trader *providing* base.
+    //     if (pos.side == IPositionLedger.PositionSide.LONG) {
+    //         // Trader sells base to get quote
+    //         (quoteValueFromAmm, , ) = amm.swapBaseForQuotePreview(
+    //             actualBaseAmountToTrade
+    //         );
+    //     } else {
+    //         // SHORT
+    //         // Trader buys base back with quote
+    //         (quoteValueFromAmm, , ) = amm.swapQuoteForBasePreview(
+    //             actualBaseAmountToTrade
+    //         );
+    //         // This is incorrect logic for short closing.
+    //         // If short, trader needs to *buy* `actualBaseAmountToTrade` from the AMM.
+    //         // The cost to do this is `costInQuote`.
+    //         // (amm.swapQuoteForBasePreview returns base out for quote in)
+    //         // We need how much quote it costs to buy `actualBaseAmountToTrade`. This needs an inverse function.
+    //         // OR: the size of the short position was `pos.size` (base).
+    //         // When closing, the trader "buys back" this `pos.size` from the AMM.
+    //         // The AMM interaction: base reserves decrease, quote reserves increase.
+    //         // The AMM receives `costInQuote` and gives out `pos.size` of base.
+    //         // This is `getQuoteAmountIn(pos.size)` or derived from `swapBaseForQuotePreview` if interpreted as trader *providing* base.
 
-            // Correct for closing SHORT:
-            // Trader needs to buy `pos.size` of base asset from the AMM.
-            // This means trader inputs quote into AMM, AMM outputs base.
-            // The AMM's quote reserve increases, base reserve decreases.
-            // We need the *cost* in quote to acquire `pos.size` base.
-            // This requires `getQuoteAmountIn` for a `baseAmountOut`.
-            // amountQuoteIn = (amountBaseOut * currentQuoteReserve) / (currentBaseReserve - amountBaseOut)
-            (uint256 currentAmmBase, uint256 currentAmmQuote) = amm
-                .getReserves();
-            if (currentAmmBase <= actualBaseAmountToTrade)
-                revert InsufficientLiquidity(); // Cannot buy more base than available
-            uint256 numerator = actualBaseAmountToTrade * currentAmmQuote;
-            uint256 denominator = currentAmmBase - actualBaseAmountToTrade;
-            quoteValueFromAmm = numerator / denominator; // This is the *cost* to buy back base.
-        }
+    //         // Correct for closing SHORT:
+    //         // Trader needs to buy `pos.size` of base asset from the AMM.
+    //         // This means trader inputs quote into AMM, AMM outputs base.
+    //         // The AMM's quote reserve increases, base reserve decreases.
+    //         // We need the *cost* in quote to acquire `pos.size` base.
+    //         // This requires `getQuoteAmountIn` for a `baseAmountOut`.
+    //         // amountQuoteIn = (amountBaseOut * currentQuoteReserve) / (currentBaseReserve - amountBaseOut)
+    //         (uint256 currentAmmBase, uint256 currentAmmQuote) = amm
+    //             .getReserves();
+    //         if (currentAmmBase <= actualBaseAmountToTrade)
+    //             revert InsufficientLiquidity(); // Cannot buy more base than available
+    //         uint256 numerator = actualBaseAmountToTrade * currentAmmQuote;
+    //         uint256 denominator = currentAmmBase - actualBaseAmountToTrade;
+    //         quoteValueFromAmm = numerator / denominator; // This is the *cost* to buy back base.
+    //     }
 
-        // --- Calculate PnL ---
-        // PnL = (ExitValue - EntryValue) for LONG
-        // PnL = (EntryValue - ExitValue) for SHORT
-        // EntryValue (quote) = pos.size (base) * pos.entryPrice (quote/base)
-        // ExitValue (quote) = quoteValueFromAmm (already in quote terms for pos.size base)
-        // All these values should be consistently scaled (e.g., PRICE_PRECISION)
+    //     // --- Calculate PnL ---
+    //     // PnL = (ExitValue - EntryValue) for LONG
+    //     // PnL = (EntryValue - ExitValue) for SHORT
+    //     // EntryValue (quote) = pos.size (base) * pos.entryPrice (quote/base)
+    //     // ExitValue (quote) = quoteValueFromAmm (already in quote terms for pos.size base)
+    //     // All these values should be consistently scaled (e.g., PRICE_PRECISION)
 
-        uint256 entryValueQuoteScaled = pos.size.mul(
-            pos.entryPrice,
-            PRICE_PRECISION
-        );
-        // quoteValueFromAmm is already the scaled quote value of pos.size at exit.
+    //     uint256 entryValueQuoteScaled = pos.size.mul(
+    //         pos.entryPrice,
+    //         PRICE_PRECISION
+    //     );
+    //     // quoteValueFromAmm is already the scaled quote value of pos.size at exit.
 
-        int256 pnlScaled; // Profit and Loss in quote asset, scaled by PRICE_PRECISION
-        if (pos.side == IPositionLedger.PositionSide.LONG) {
-            pnlScaled =
-                int256(quoteValueFromAmm) -
-                int256(entryValueQuoteScaled);
-        } else {
-            // SHORT
-            pnlScaled =
-                int256(entryValueQuoteScaled) -
-                int256(quoteValueFromAmm); // Cost to buy back
-        }
+    //     int256 pnlScaled; // Profit and Loss in quote asset, scaled by PRICE_PRECISION
+    //     if (pos.side == IPositionLedger.PositionSide.LONG) {
+    //         pnlScaled =
+    //             int256(quoteValueFromAmm) -
+    //             int256(entryValueQuoteScaled);
+    //     } else {
+    //         // SHORT
+    //         pnlScaled =
+    //             int256(entryValueQuoteScaled) -
+    //             int256(quoteValueFromAmm); // Cost to buy back
+    //     }
 
-        // --- Calculate Fee ---
-        // Fee is on the total position size being closed (quoteValueFromAmm)
-        uint256 feeAmountQuoteScaled = quoteValueFromAmm.mul(
-            takerFeeBps,
-            FEE_PRECISION
-        );
+    //     // --- Calculate Fee ---
+    //     // Fee is on the total position size being closed (quoteValueFromAmm)
+    //     uint256 feeAmountQuoteScaled = quoteValueFromAmm.mul(
+    //         takerFeeBps,
+    //         FEE_PRECISION
+    //     );
 
-        // Convert PnL and Fee from PRICE_PRECISION scale to collateral's native decimals
-        int256 pnlCollateralDecimals;
-        uint256 feeCollateralDecimals;
+    //     // Convert PnL and Fee from PRICE_PRECISION scale to collateral's native decimals
+    //     int256 pnlCollateralDecimals;
+    //     uint256 feeCollateralDecimals;
 
-        if (collateralDecimals < 18) {
-            pnlCollateralDecimals =
-                pnlScaled /
-                int256(10 ** (18 - collateralDecimals));
-            feeCollateralDecimals =
-                feeAmountQuoteScaled /
-                (10 ** (18 - collateralDecimals));
-        } else if (collateralDecimals > 18) {
-            pnlCollateralDecimals =
-                pnlScaled *
-                int256(10 ** (collateralDecimals - 18));
-            feeCollateralDecimals =
-                feeAmountQuoteScaled *
-                (10 ** (collateralDecimals - 18));
-        } else {
-            pnlCollateralDecimals = pnlScaled;
-            feeCollateralDecimals = feeAmountQuoteScaled;
-        }
+    //     if (collateralDecimals < 18) {
+    //         pnlCollateralDecimals =
+    //             pnlScaled /
+    //             int256(10 ** (18 - collateralDecimals));
+    //         feeCollateralDecimals =
+    //             feeAmountQuoteScaled /
+    //             (10 ** (18 - collateralDecimals));
+    //     } else if (collateralDecimals > 18) {
+    //         pnlCollateralDecimals =
+    //             pnlScaled *
+    //             int256(10 ** (collateralDecimals - 18));
+    //         feeCollateralDecimals =
+    //             feeAmountQuoteScaled *
+    //             (10 ** (collateralDecimals - 18));
+    //     } else {
+    //         pnlCollateralDecimals = pnlScaled;
+    //         feeCollateralDecimals = feeAmountQuoteScaled;
+    //     }
 
-        // --- Slippage Check ---
-        // Trader gets back margin + PnL - fee. This should be >= minQuoteAmountOut (which is before fee)
-        uint256 quoteReturnedBeforeFee;
-        if (pnlCollateralDecimals >= 0) {
-            quoteReturnedBeforeFee =
-                pos.margin +
-                uint256(pnlCollateralDecimals);
-        } else {
-            // Loss is capped at margin for non-liquidated closure.
-            // (A real system might allow losses > margin, covered by free collateral if available, or force liquidation)
-            if (uint256(-pnlCollateralDecimals) > pos.margin) {
-                // Loss exceeds margin
-                quoteReturnedBeforeFee = 0; // Margin wiped out
-            } else {
-                quoteReturnedBeforeFee =
-                    pos.margin -
-                    uint256(-pnlCollateralDecimals);
-            }
-        }
-        if (quoteReturnedBeforeFee < minQuoteAmountOut)
-            revert SlippageExceeded();
+    //     // --- Slippage Check ---
+    //     // Trader gets back margin + PnL - fee. This should be >= minQuoteAmountOut (which is before fee)
+    //     uint256 quoteReturnedBeforeFee;
+    //     if (pnlCollateralDecimals >= 0) {
+    //         quoteReturnedBeforeFee =
+    //             pos.margin +
+    //             uint256(pnlCollateralDecimals);
+    //     } else {
+    //         // Loss is capped at margin for non-liquidated closure.
+    //         // (A real system might allow losses > margin, covered by free collateral if available, or force liquidation)
+    //         if (uint256(-pnlCollateralDecimals) > pos.margin) {
+    //             // Loss exceeds margin
+    //             quoteReturnedBeforeFee = 0; // Margin wiped out
+    //         } else {
+    //             quoteReturnedBeforeFee =
+    //                 pos.margin -
+    //                 uint256(-pnlCollateralDecimals);
+    //         }
+    //     }
+    //     if (quoteReturnedBeforeFee < minQuoteAmountOut)
+    //         revert SlippageExceeded();
 
-        // --- State Updates ---
-        // 1. Update vAMM reserves (actually perform the swap)
-        if (pos.side == IPositionLedger.PositionSide.LONG) {
-            amm.swapBaseForQuote(actualBaseAmountToTrade); // Returns quote, updates reserves
-        } else {
-            // SHORT
-            amm.swapQuoteForBase(quoteValueFromAmm); // Spends quote to get base, updates reserves
-            // This quoteValueFromAmm is the *cost*.
-        }
+    //     // --- State Updates ---
+    //     // 1. Update vAMM reserves (actually perform the swap)
+    //     if (pos.side == IPositionLedger.PositionSide.LONG) {
+    //         amm.swapBaseForQuote(actualBaseAmountToTrade); // Returns quote, updates reserves
+    //     } else {
+    //         // SHORT
+    //         amm.swapQuoteForBase(quoteValueFromAmm); // Spends quote to get base, updates reserves
+    //         // This quoteValueFromAmm is the *cost*.
+    //     }
 
-        // 2. Update PositionLedger: Close the position
-        // The PnL passed to ledger here is mostly for event emission by ledger.
-        // ClearingHouse is the source of truth for PnL calculation.
-        positionLedger.closePosition(msg.sender, baseAsset); // Returns a dummy PnL from ledger.
+    //     // 2. Update PositionLedger: Close the position
+    //     // The PnL passed to ledger here is mostly for event emission by ledger.
+    //     // ClearingHouse is the source of truth for PnL calculation.
+    //     positionLedger.closePosition(msg.sender, baseAsset); // Returns a dummy PnL from ledger.
 
-        // 3. Adjust trader's free collateral balance
-        // Trader gets back original margin + PnL - Fee
-        uint256 finalAmountToTrader;
-        if (pnlCollateralDecimals >= 0) {
-            // Profit
-            finalAmountToTrader =
-                pos.margin +
-                uint256(pnlCollateralDecimals) -
-                feeCollateralDecimals;
-            traderBalances[msg.sender] = traderBalances[msg.sender].add(
-                finalAmountToTrader
-            );
-        } else {
-            // Loss
-            uint256 lossAmount = uint256(-pnlCollateralDecimals);
-            if (lossAmount + feeCollateralDecimals >= pos.margin) {
-                // Total loss + fee >= margin. Margin is wiped. Any excess loss not covered here (would be bad debt or socialized)
-                // This means trader gets 0 back from margin.
-                // We already deducted fee from potential profit, here fee adds to the loss against margin.
-            } else {
-                finalAmountToTrader =
-                    pos.margin -
-                    lossAmount -
-                    feeCollateralDecimals;
-                traderBalances[msg.sender] = traderBalances[msg.sender].add(
-                    finalAmountToTrader
-                );
-            }
-        }
-        // TODO: Send fee to treasury/insurance fund
+    //     // 3. Adjust trader's free collateral balance
+    //     // Trader gets back original margin + PnL - Fee
+    //     uint256 finalAmountToTrader;
+    //     if (pnlCollateralDecimals >= 0) {
+    //         // Profit
+    //         finalAmountToTrader =
+    //             pos.margin +
+    //             uint256(pnlCollateralDecimals) -
+    //             feeCollateralDecimals;
+    //         traderBalances[msg.sender] = traderBalances[msg.sender].add(
+    //             finalAmountToTrader
+    //         );
+    //     } else {
+    //         // Loss
+    //         uint256 lossAmount = uint256(-pnlCollateralDecimals);
+    //         if (lossAmount + feeCollateralDecimals >= pos.margin) {
+    //             // Total loss + fee >= margin. Margin is wiped. Any excess loss not covered here (would be bad debt or socialized)
+    //             // This means trader gets 0 back from margin.
+    //             // We already deducted fee from potential profit, here fee adds to the loss against margin.
+    //         } else {
+    //             finalAmountToTrader =
+    //                 pos.margin -
+    //                 lossAmount -
+    //                 feeCollateralDecimals;
+    //             traderBalances[msg.sender] = traderBalances[msg.sender].add(
+    //                 finalAmountToTrader
+    //             );
+    //         }
+    //     }
+    //     // TODO: Send fee to treasury/insurance fund
 
-        emit PositionClosedCH(
-            msg.sender,
-            baseAsset,
-            uint256(pnlCollateralDecimals),
-            feeCollateralDecimals
-        );
-    }
+    //     emit PositionClosedCH(
+    //         msg.sender,
+    //         baseAsset,
+    //         uint256(pnlCollateralDecimals),
+    //         feeCollateralDecimals
+    //     );
+    // }
 
     function addMargin(
         address baseAsset,
         uint256 quoteAmount
-    ) external override {
+    ) external  {
         if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
         if (quoteAmount == 0) revert InvalidAmount();
 
@@ -736,7 +736,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function removeMargin(
         address baseAsset,
         uint256 quoteAmount
-    ) external override {
+    ) external  {
         if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
         if (quoteAmount == 0) revert InvalidAmount();
 
@@ -776,7 +776,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
 
     // --- Liquidation ---
     // This is a placeholder for a complex liquidation mechanism.
-    function liquidate(address trader, address baseAsset) external override {
+    function liquidate(address trader, address baseAsset) external  {
         if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
         // Who can call liquidate? Anyone, if position is liquidatable.
         // Or only designated liquidators.
@@ -923,7 +923,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
 
     // --- Funding ---
     // Placeholder for funding rate settlement logic
-    // function settleFunding(address baseAsset) external override {
+    // function settleFunding(address baseAsset) external  {
     //     if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
     //     // 1. Get mark price (from vAMM) and index price (from Oracle).
     //     // 2. Calculate funding rate: (markPrice - indexPrice) / indexPrice / N (e.g., N=24 for hourly rate over 24h period)
@@ -940,7 +940,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     // --- View Functions ---
     function getMarkPrice(
         address baseAsset
-    ) public view override returns (uint256) {
+    ) public view  returns (uint256) {
         if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
         IVirtualAMM amm = virtualAmms[baseAsset];
         if (address(amm) == address(0)) return 0; // Or revert
@@ -950,7 +950,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
 
     function getIndexPrice(
         address baseAsset
-    ) public view override returns (uint256) {
+    ) public view  returns (uint256) {
         if (!supportedBaseAssets[baseAsset]) revert AssetNotSupported();
         IPriceOracle oracle = priceOracles[baseAsset];
         if (address(oracle) == address(0)) return 0; // Or revert
@@ -963,7 +963,7 @@ contract ClearingHouse is IClearingHouse, Ownable {
     function getPosition(
         address trader,
         address baseAsset
-    ) public view override returns (IPositionLedger.Position memory) {
+    ) public view  returns (IPositionLedger.Position memory) {
         if (
             !supportedBaseAssets[baseAsset] &&
             !positionLedger.hasPosition(trader, baseAsset)

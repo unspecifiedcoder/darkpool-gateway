@@ -4,10 +4,10 @@ import {
   ClaimHonkVerifier,
   EntryPoint,
   EthPool,
-  MockErc20,
+  MockERC20,
   TokenPool,
   WithdrawTransferHonkVerifier,
-} from "../../typechain-types";
+} from "../../../typechain-types";
 import { expect } from "chai";
 import { LeanIMT } from "../test_utils/leanIMT";
 import { poseidon2Hash, randomBigInt } from "@aztec/foundation/crypto";
@@ -597,7 +597,7 @@ describe("Happy flow testing - TokenPool", function () {
 
   let WithdrawVerifier: WithdrawTransferHonkVerifier;
   let ClaimVerifier: ClaimHonkVerifier;
-  let mockToken: MockErc20;
+  let mockToken: MockERC20;
   let entryPoint: EntryPoint;
   let tokenPool: TokenPool;
 
@@ -665,7 +665,11 @@ describe("Happy flow testing - TokenPool", function () {
       claimableNoteNonces: [],
     };
 
-    mockToken = await (await ethers.getContractFactory("MockErc20", aliceSigner)).deploy();
+    mockToken = await (await ethers.getContractFactory("MockERC20", aliceSigner)).deploy(
+      "MockERC20",
+      "MockERC20",
+      18
+    );
     await mockToken.waitForDeployment();
 
     // create pool for mock token

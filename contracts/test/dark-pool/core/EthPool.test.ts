@@ -5,7 +5,7 @@ import {
   EthPool,
   Poseidon2,
   WithdrawTransferHonkVerifier,
-} from "../../typechain-types"; // Adjust paths
+} from "../../../typechain-types"; // Adjust paths
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   calculateSolidityCommitment,
