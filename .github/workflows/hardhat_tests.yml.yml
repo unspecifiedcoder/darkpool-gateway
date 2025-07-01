@@ -1,3 +1,5 @@
+# .github/workflows/your-workflow-name.yml
+
 name: Hardhat Tests
 
 # Controls when the workflow will run
@@ -6,7 +8,12 @@ on: [push]
 jobs:
   test-contracts:
     name: Run Hardhat Tests
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
+
+    # This 'env' block makes the secret available as an environment variable
+    # for all steps in this job.
+    env:
+      DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
 
     steps:
       - name: Checkout repository
@@ -15,15 +22,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x' # Specify your project's Node.js version (e.g., 18.x, 20.x)
-          cache: 'npm' # Enable caching for npm dependencies
-          cache-dependency-path: contracts/yarn.lock 
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: contracts/yarn.lock
 
       - name: Install dependencies in contracts folder
-    
         working-directory: ./contracts
         run: yarn install --frozen-lockfile
 
       - name: Run Hardhat tests
-        working-directory: ./contracts 
+        # The DEPLOYER_PRIVATE_KEY is now available to this command
+        working-directory: ./contracts
         run: npx hardhat test
