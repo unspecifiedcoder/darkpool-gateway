@@ -66,8 +66,7 @@ describe("TokenPool Contract Tests", function () {
 
     mockToken = (await MockERC20Factory.deploy(
       "MockERC20",
-      "MockERC20",
-      18
+      "MockERC20"
     )) as MockERC20;
     await mockToken.waitForDeployment();
 
@@ -1028,8 +1027,7 @@ describe("Complete Happy Flow multiple user - Deposit, multiple withdraws, multi
     );
     mockToken = (await mockTokenFactory.deploy(
       "MockERC20",
-      "MockERC20",
-      18
+      "MockERC20"
     )) as MockERC20;
     await mockToken.waitForDeployment();
 

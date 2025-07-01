@@ -165,7 +165,23 @@ describe("ClearingHouse Contract Tests", function () {
             const position = await clearingHouse.positions(alice.address);
             expect(position.size).to.equal(0);
 
-            console.log("Alice stats before and after:", aliceFreeCollateralBefore, aliceFreeCollateralAfter);
+            // console.log("Alice stats before and after:", {
+            //     before: {
+            //         freeCollateral: aliceFreeCollateralBefore,
+            //         positionMargin: position.margin,
+            //         pnl: pnl,
+            //         amountReturned: amountReturned,
+            //         finalCollateral: finalCollateral,
+            //     },
+            //     after: {
+            //         freeCollateral: aliceFreeCollateralAfter,
+            //     }
+            // });
+
+            console.log("Alice balance before and after:", {
+               before: aliceFreeCollateralBefore,
+               after: aliceFreeCollateralAfter
+            });
         });
         
         it("Should close a losing long position and deduct from margin", async function () {
@@ -198,7 +214,10 @@ describe("ClearingHouse Contract Tests", function () {
 
             expect(aliceFreeCollateralAfter).to.be.closeTo(finalCollateral, parseUSDC("0.001"));
 
-            console.log("Alice stats before and after:", aliceFreeCollateralBefore, aliceFreeCollateralAfter);
+            console.log("Alice balance before and after:", {
+               before: aliceFreeCollateralBefore,
+               after: aliceFreeCollateralAfter
+            });
         });
     });
 
@@ -244,7 +263,10 @@ describe("ClearingHouse Contract Tests", function () {
             
             expect(bobCollateralAfter).to.be.closeTo(expectedFinalCollateral, parseUSDC("0.001"));
 
-            console.log("Bob stats before and after:", bobCollateralBefore, bobCollateralAfter);
+            console.log("Bob balance before and after:", {
+               before: bobCollateralBefore,
+               after: bobCollateralAfter
+            });
         });
     });
 
@@ -282,7 +304,10 @@ describe("ClearingHouse Contract Tests", function () {
             const davidBalanceAfter = await usdcToken.balanceOf(david.address);
             expect(davidBalanceAfter - davidBalanceBefore).to.equal(liquidationFee);
 
-            console.log("David stats before and after:", davidBalanceBefore, davidBalanceAfter);
+            console.log("David balance before and after:", {
+               before: davidBalanceBefore,
+               after: davidBalanceAfter
+            });
         });
 
         it("Should allow a user to add margin to avoid liquidation", async function () {
@@ -311,11 +336,9 @@ describe("ClearingHouse Contract Tests", function () {
             await expect(clearingHouse.connect(david).liquidate(charlie.address))
                 .to.be.revertedWithCustomError(clearingHouse, "PositionNotLiquidatable");
 
-            console.log("Charlie stats before and after:", {
-                marginBefore: margin,
-                marginAfter: position.margin,
-                isSolventBefore,
-                isSolventAfter,
+            console.log("margin changes:", {
+               before: margin,
+               after: position.margin
             });
         });
     });

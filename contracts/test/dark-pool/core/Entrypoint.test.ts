@@ -667,8 +667,7 @@ describe("Happy flow testing - TokenPool", function () {
 
     mockToken = await (await ethers.getContractFactory("MockERC20", aliceSigner)).deploy(
       "MockERC20",
-      "MockERC20",
-      18
+      "MockERC20"
     );
     await mockToken.waitForDeployment();
 
