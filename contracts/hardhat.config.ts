@@ -7,6 +7,13 @@ import "@typechain/hardhat"; // [3, 10]
 import "hardhat-deploy"; // [3, 10]
 // ... any other plugins
 
+if (!process.env.DEPLOYER_PRIVATE_KEY) {
+    throw new Error("DEPLOYER_PRIVATE_KEY is not set");
+}
+
+// hardhat 18th
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY;
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
@@ -23,7 +30,12 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      accounts: [deployerPrivateKey],
+    },
     hardhat: { // Default local network
+      
       allowUnlimitedContractSize: true, // Useful for development and testing complex contracts
       gasPrice: "auto", // or a specific number in gwei e.g., 8000000000 (8 gwei)
       // forking: {

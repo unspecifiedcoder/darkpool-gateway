@@ -214,7 +214,6 @@ contract ClearingHouse is ReentrancyGuard {
 
 
     // --- View and Helper Functions ---
-
     function _calculatePnl(address _user) internal view returns (int256 pnl, bool isSolvent) {
         Position memory position = positions[_user];
         if (position.size == 0) return (0, true);

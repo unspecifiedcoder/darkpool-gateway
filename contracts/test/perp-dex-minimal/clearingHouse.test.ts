@@ -165,19 +165,6 @@ describe("ClearingHouse Contract Tests", function () {
             const position = await clearingHouse.positions(alice.address);
             expect(position.size).to.equal(0);
 
-            // console.log("Alice stats before and after:", {
-            //     before: {
-            //         freeCollateral: aliceFreeCollateralBefore,
-            //         positionMargin: position.margin,
-            //         pnl: pnl,
-            //         amountReturned: amountReturned,
-            //         finalCollateral: finalCollateral,
-            //     },
-            //     after: {
-            //         freeCollateral: aliceFreeCollateralAfter,
-            //     }
-            // });
-
             console.log("Alice balance before and after:", {
                before: aliceFreeCollateralBefore,
                after: aliceFreeCollateralAfter
