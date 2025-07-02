@@ -1,9 +1,10 @@
 use ethers::{
     prelude::*,
-    providers::{Provider, Ws},
+    providers::{Http, Provider}, // Remove Ws, add Http
     signers::{LocalWallet, Signer},
     types::U256,
 };
+
 use serde::Deserialize;
 use std::{env, str::FromStr, sync::Arc, time::Duration};
 use anyhow::Result;
@@ -15,7 +16,6 @@ abigen!(Oracle, "abi/Oracle.json");
 // A struct to deserialize the JSON response from the Binance API
 #[derive(Debug, Deserialize)]
 struct BinancePrice {
-    symbol: String,
     price: String,
 }
 
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
 
     // Set up the Ethereum provider and client.
     // Using a WebSocket provider is best for long-running applications.
-    let provider = Provider::<Ws>::connect(&rpc_url).await?;
+    let provider = Provider::<Http>::try_from(&rpc_url)?;
     let chain_id = provider.get_chainid().await?.as_u64();
     
     // Create a signer instance from our private key.
@@ -68,6 +68,7 @@ async fn main() -> Result<()> {
     // Arc is a thread-safe reference-counting pointer, which allows us to share
     // the client between the contract instance and our main logic safely.
     let client = Arc::new(SignerMiddleware::new(provider, wallet));
+
 
     // Create a type-safe instance of our Oracle contract.
     let oracle_address: Address = contract_address.parse()?;
@@ -146,6 +147,6 @@ async fn main() -> Result<()> {
         }
         
         // 4. Wait for the next cycle
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(20)).await;
     }
 }

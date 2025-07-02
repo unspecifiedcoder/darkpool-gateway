@@ -36,11 +36,10 @@ const PerpDexModule = buildModule("PerpDexModule", (m) => {
   
   // Grant the MINTER_ROLE on the USDC token to the ClearingHouse.
   // This allows the ClearingHouse to mint USDC to pay out profits.
-  const minterRole = m.readEventArgument(usdcToken, "RoleGranted", "role", {
-    emitter: usdcToken
-  });
-  m.call(usdcToken, "grantRole", [minterRole, clearingHouse]);
+  const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+  m.call(usdcToken, "grantRole", [MINTER_ROLE, clearingHouse]);
   console.log("Granting MINTER_ROLE to ClearingHouse configured.");
+
 
   // Grant the UPDATER_ROLE on the Oracle to our off-chain bot address.
   // This allows the bot to submit new prices.
