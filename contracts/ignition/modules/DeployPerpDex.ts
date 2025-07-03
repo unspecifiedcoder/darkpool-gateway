@@ -4,11 +4,11 @@ import "dotenv/config";
 
 // ========== CONFIGURATION ==========
 // The initial price of BTC in USDC, with 18 decimals. E.g., $50,000
-const INITIAL_BTC_PRICE = ethers.parseUnits("50000", 18);
+const INITIAL_BTC_PRICE = ethers.parseUnits("100000", 18);
 
 // The public address for your off-chain bot that will update the oracle price.
 // This is loaded from your .env file. # hardhat account 19
-const ORACLE_UPDATER_ADDRESS = process.env.ORACLE_UPDATER_ADDRESS || "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199";
+const ORACLE_UPDATER_ADDRESS = process.env.ORACLE_UPDATER_ADDRESS || "0x6d86AfD96b1091B52c95784B5a3a1Bd5cB614188";
 // ===================================
 
 const PerpDexModule = buildModule("PerpDexModule", (m) => {
@@ -17,9 +17,12 @@ const PerpDexModule = buildModule("PerpDexModule", (m) => {
     throw new Error("ORACLE_UPDATER_ADDRESS is not set in your .env file.");
   }
 
+  console.log("Deploying Contracts....");
+
   // Step 1: Deploy the MockERC20 (USDC) contract
   const usdcToken = m.contract("MockERC20", ["USD Coin", "USDC"]);
   console.log("MockERC20 (USDC) deployment configured.");
+  
 
   // Step 2: Deploy the Oracle contract with an initial price
   const oracle = m.contract("Oracle", [INITIAL_BTC_PRICE]);
@@ -43,11 +46,10 @@ const PerpDexModule = buildModule("PerpDexModule", (m) => {
 
   // Grant the UPDATER_ROLE on the Oracle to our off-chain bot address.
   // This allows the bot to submit new prices.
-  const updaterRole = m.readEventArgument(oracle, "RoleGranted", "role", {
-    emitter: oracle
-  });
-  m.call(oracle, "grantRole", [updaterRole, ORACLE_UPDATER_ADDRESS]);
+  const UPDATER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("UPDATER_ROLE"));
+  m.call(oracle, "grantRole", [UPDATER_ROLE, ORACLE_UPDATER_ADDRESS]);
   console.log(`Granting UPDATER_ROLE to ${ORACLE_UPDATER_ADDRESS} configured.`);
+
 
   // Return the deployed contract instances for easy access
   return { usdcToken, oracle, clearingHouse };

@@ -5,12 +5,22 @@ import "hardhat-gas-reporter"; // [6, 17, 24]
 import "solidity-coverage"; // [3]
 import "@typechain/hardhat"; // [3, 10]
 import "hardhat-deploy"; // [3, 10]
+import "@nomicfoundation/hardhat-verify";
+
 // ... any other plugins
 
-// hardhat 18th
-const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e";
+if (!process.env.OPTIMISM_ETHERSCAN_API_KEY) {
+  console.error("No API key configured");
+}
 
+// hardhat 18th
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const optimismEtherscanApiKey = process.env.OPTIMISM_ETHERSCAN_API_KEY || "";
+// console.log(optimismEtherscanApiKey);
 const config: HardhatUserConfig = {
+  sourcify: {
+    enabled: false,
+  },
   solidity: {
     compilers: [
       {
@@ -28,7 +38,17 @@ const config: HardhatUserConfig = {
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
-      accounts: [deployerPrivateKey, "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"],
+      // accounts: [deployerPrivateKey, "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" , "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" , ],
+    },
+    scrollSepolia: {
+      url: "https://scroll-sepolia.infura.io/v3/172bf686e1194d75b77619beb0d3e698",
+      accounts: [deployerPrivateKey],
+      chainId: 534351
+    },
+    optimismSepolia: {
+      url: "https://sepolia.optimism.io",
+      accounts: [deployerPrivateKey],
+      chainId: 11155420, // Chain ID for Optimism Sepolia
     },
     hardhat: { // Default local network
 
@@ -74,7 +94,33 @@ const config: HardhatUserConfig = {
   mocha: { // Mocha test runner options
     timeout: 40000, // Increase timeout for long-running tests (e.g., forking tests)
   },
-  // etherscan: {
+  etherscan: {
+    apiKey: {
+      optimismSepolia: optimismEtherscanApiKey,
+    },
+    customChains: [
+      {
+        network: "optimismSepolia",
+        chainId: 11155420,
+        urls: {
+          // The API endpoint for verification
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          // The block explorer URL
+          browserURL: "https://sepolia-optimistic.etherscan.io/",
+        },
+      },
+      {
+        network: "scrollSepolia",
+        chainId: 534351,
+        urls: {
+          // The API endpoint for verification
+          apiURL: "https://api-sepolia.scrollscan.com/api",
+          // The block explorer URL
+          browserURL: "https://sepolia.scrollscan.com/",
+        },
+      },
+    ],
+  }
   //   apiKey: {
   //     mainnet: process.env.ETHERSCAN_API_KEY || "",
   //     sepolia: process.env.ETHERSCAN_API_KEY || "",
