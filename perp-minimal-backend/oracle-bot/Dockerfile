@@ -4,6 +4,7 @@
 # Use an official Rust slim image for a smaller base
 FROM rust:1-slim as builder
 
+
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 
 
@@ -19,7 +20,7 @@ RUN cargo build --release
 
 # --- Stage 2: The Final Image ---
 # Start from a minimal, lightweight Debian image
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Copy ONLY the compiled 'oracle-bot' binary from the 'builder' stage
 # into a standard location in the final image's PATH.

@@ -14,7 +14,7 @@ COPY ./ .
 RUN cargo build --release
 
 # --- Stage 2: The Final Image ---
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Copy ONLY the compiled 'liquidation-bot' binary from the 'builder' stage
 COPY --from=builder /app/target/release/liquidation-bot /usr/local/bin/liquidation-bot
