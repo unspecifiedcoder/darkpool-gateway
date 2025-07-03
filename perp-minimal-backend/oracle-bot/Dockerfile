@@ -1,31 +1,10 @@
-# File: perp-minimal-backend/oracle-bot/Dockerfile
-
-# --- Stage 1: The Builder ---
-# Use an official Rust slim image for a smaller base
 FROM rust:1-slim as builder
-
-
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
-
-
-# Set the working directory for the build
+RUN apt-get update && apt-get install -y build-essential pkg-config libssl-dev
 WORKDIR /app
-
-# Copy ONLY the oracle-bot's source code into the build stage
-# This makes the build cache more effective
 COPY ./ .
-
-# Build the oracle-bot in release mode for performance
 RUN cargo build --release
 
-# --- Stage 2: The Final Image ---
-# Start from a minimal, lightweight Debian image
 FROM debian:bookworm-slim
-
-# Copy ONLY the compiled 'oracle-bot' binary from the 'builder' stage
-# into a standard location in the final image's PATH.
+RUN apt-get update && apt-get install -y --no-install-recommends libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/oracle-bot /usr/local/bin/oracle-bot
-
-# Set the default command to run when the container starts.
-# Railway can still override this, but it's good practice.
 CMD ["oracle-bot"]
