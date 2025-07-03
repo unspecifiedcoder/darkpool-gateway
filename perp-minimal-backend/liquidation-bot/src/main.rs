@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     // --- SETUP (Identical to before) ---
     dotenv::dotenv().ok();
     let rpc_url = env::var("RPC_URL").expect("RPC_URL must be set");
-    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set");
+    let private_key = env::var("LIQUIDATOR_PRIVATE_KEY").expect("LIQUIDATOR_PRIVATE_KEY must be set");
     let clearing_house_address_str = env::var("CLEARING_HOUSE_CONTRACT_ADDRESS").expect("CLEARING_HOUSE_CONTRACT_ADDRESS must be set");
     let oracle_address_str = env::var("ORACLE_CONTRACT_ADDRESS").expect("ORACLE_CONTRACT_ADDRESS must be set");
 
