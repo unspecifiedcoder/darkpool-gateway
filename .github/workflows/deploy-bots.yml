@@ -1,0 +1,44 @@
+name: Build and Push Bot Docker Images
+
+# Run this workflow on every push to the main branch
+on:
+  push:
+    branches: [ "main" ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# IMPORTANT: Grant permissions for the GITHUB_TOKEN to write to packages
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Oracle Bot image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./perp-minimal-backend/oracle-bot
+          # The context is the directory containing the Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/oracle-bot:latest
+          # Example tag: ghcr.io/your-username/oracle-bot:latest
+
+      - name: Build and push Liquidation Bot image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./perp-minimal-backend/liquidation-bot
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/liquidation-bot:latest
+          # Example tag: ghcr.io/your-username/liquidation-bot:latest
