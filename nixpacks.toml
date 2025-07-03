@@ -1,0 +1,17 @@
+# This file MUST be at the root of your repository (dark-dex-v0)
+
+# The [phases] section defines the build steps.
+[phases.build]
+# All commands are run from the repository root.
+# We need to build BOTH Rust projects inside the perp-minimal-backend directory.
+cmds = [
+    "cd perp-minimal-backend/oracle-bot && cargo build --release",
+    "cd perp-minimal-backend/liquidation-bot && cargo build --release"
+]
+
+# The [start] section defines what processes to run after the build.
+# Each entry becomes a separate service in Railway.
+[start]
+# The path to the executable is relative to the repository root.
+oracle = "./perp-minimal-backend/oracle-bot/target/release/oracle-bot"
+liquidation = "./perp-minimal-backend/liquidation-bot/target/release/liquidation-bot"
