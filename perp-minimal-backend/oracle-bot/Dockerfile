@@ -4,6 +4,9 @@
 # Use an official Rust slim image for a smaller base
 FROM rust:1-slim as builder
 
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
+
 # Set the working directory for the build
 WORKDIR /app
 

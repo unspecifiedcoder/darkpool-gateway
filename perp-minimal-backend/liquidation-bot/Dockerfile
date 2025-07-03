@@ -2,7 +2,10 @@
 
 # --- Stage 1: The Builder ---
 FROM rust:1-slim as builder
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /app
+
+
 
 # Copy ONLY the liquidation-bot's source code
 COPY ./ .
