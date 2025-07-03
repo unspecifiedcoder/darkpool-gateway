@@ -13,5 +13,5 @@ cmds = [
 # Each entry becomes a separate service in Railway.
 [start]
 # The path to the executable is relative to the repository root.
-oracle = "./perp-minimal-backend/oracle-bot/target/release/oracle-bot"
-liquidation = "./perp-minimal-backend/liquidation-bot/target/release/liquidation-bot"
+# oracle = "./perp-minimal-backend/oracle-bot/target/release/oracle-bot"
+# liquidation = "./perp-minimal-backend/liquidation-bot/target/release/liquidation-bot"
