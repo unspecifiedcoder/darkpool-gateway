@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
 
     
     println!("⏳ Syncing historical state...");
-    sync_historical_state(Arc::clone(&app_state), &clearing_house).await?;
+    // sync_historical_state(Arc::clone(&app_state), &clearing_house).await?;
     println!("✅ Historical state synced.");
     
     let position_listener_handle = tokio::spawn(listen_for_position_changes(Arc::clone(&app_state), clearing_house.clone()));

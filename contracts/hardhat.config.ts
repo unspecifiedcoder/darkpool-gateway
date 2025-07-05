@@ -97,6 +97,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       optimismSepolia: optimismEtherscanApiKey,
+      
     },
     customChains: [
       {
