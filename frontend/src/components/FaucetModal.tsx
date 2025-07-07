@@ -1,36 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { contracts } from '@/lib/contracts';
+import { parseUnits } from 'viem';
+import { toast } from 'sonner';
+import { scrollSepolia } from 'viem/chains';
+// import { scrollSepolia } from '@/lib/chains';
 
 const FaucetModal = () => {
   const [amount, setAmount] = useState<string>('1000');
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { data: hash, error, isPending, writeContract } = useWriteContract();
+
+  const account = useAccount();
 
   const handleMint = async () => {
-    setIsLoading(true);
-    try {
-      // This will be replaced with actual smart contract interaction
-      console.log(`Minting ${amount} USDC`);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate transaction
+    const amountAsBigInt = parseUnits(amount, 18); // USDC has 18 decimals
+    writeContract({
+      address: contracts.faucet.address,
+      abi: contracts.faucet.abi,
+      functionName: 'requestTokens',
+      args: [amountAsBigInt],
+      chain: scrollSepolia,
+      account: account.address,
+    });
+  };
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success('Tokens minted successfully!', {
+        description: `You have received ${amount} mock USDC.`,
+        action: {
+            label: 'View Tx',
+            onClick: () => window.open(`https://sepolia.scrollscan.com/tx/${hash}`, '_blank'),
+        },
+      });
       setIsOpen(false);
       setAmount('1000');
-    } catch (error) {
-      console.error('Minting failed:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+    if (error) {
+        toast.error('Minting Failed', {
+            description: error.message,
+        });
+    }
+  }, [isConfirmed, error, amount, hash]);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -38,19 +60,17 @@ const FaucetModal = () => {
         <Button 
           variant="neon" 
           size="sm" 
-          className="fixed bottom-6 right-6 z-50"
+          className="fixed bottom-6 right-6 z-50 cursor-pointer"
         >
-          <span className='cursor-pointer'>
           Testnet Faucet
-          </span>
         </Button>
       </DialogTrigger>
       
       <DialogContent className="sm:max-w-md glass-panel border-primary/30">
         <DialogHeader>
-          <DialogTitle className="text-glow cursor-pointer">Testnet Faucet</DialogTitle>
+          <DialogTitle className="text-glow">Testnet Faucet</DialogTitle>
           <DialogDescription>
-            Mint mock USDC tokens for testing on Optimism Sepolia
+            Mint mock USDC tokens for testing on Scroll Sepolia.
           </DialogDescription>
         </DialogHeader>
         
@@ -66,31 +86,23 @@ const FaucetModal = () => {
               className="bg-input/20 border-primary/30 focus:border-primary/60 font-mono"
             />
           </div>
-          
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>• Maximum: 10,000 USDC per request</p>
-            <p>• Cooldown: 24 hours between requests</p>
-            <p>• Only available on Optimism Sepolia testnet</p>
+          <div className="text-xs text-muted-foreground">
+            <p>• Max: 10,000 USDC per request.</p>
           </div>
         </div>
         
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsOpen(false)}
-            disabled={isLoading}
-          >
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isPending || isConfirming}>
             Cancel
           </Button>
           <Button
             type="button"
             variant="neon"
             onClick={handleMint}
-            disabled={isLoading || !amount || parseFloat(amount) <= 0}
+            disabled={isPending || isConfirming || !amount || parseFloat(amount) <= 0}
             className="glitch-effect"
           >
-            {isLoading ? 'Minting...' : 'Mint Tokens'}
+            {isPending ? 'Confirm in wallet...' : isConfirming ? 'Minting...' : 'Mint Tokens'}
           </Button>
         </DialogFooter>
       </DialogContent>

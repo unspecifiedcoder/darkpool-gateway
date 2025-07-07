@@ -6,12 +6,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Oracle} from "./Oracle.sol";
 import {MockERC20} from "./../mocks/MockERC20.sol"; // We need the type to call mint
 
-/**
- * @title ClearingHouse
- * @author Your Name
- * @notice Manages perpetual futures positions, collateral, and liquidations
- * using an oracle-based price feed and a direct mint/settlement model.
- */
 contract ClearingHouse is ReentrancyGuard {
     // --- Custom Errors ---
     error InvalidAmount();

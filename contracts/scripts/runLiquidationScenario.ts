@@ -2,23 +2,26 @@
 import { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
-import { ClearingHouse, Oracle, MockERC20 } from "../typechain-types";
+import { ClearingHouseV2, Oracle, MockERC20 } from "../typechain-types";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { BytesLike } from "ethers";
+
+const generateId = () => ethers.randomBytes(32);
 
 // --- Configuration ---
 const TRADER_CONFIG = [
   // IMR (1.67%) < MMR (6.25%) -> Instantly Liquidated
-  { name: "Alice (Insta-Liq LONG)", isLong: true, leverage: 60n * 100n },
+  { name: "Alice (Insta-Liq LONG)", isLong: true, leverage: 60n * 100n , positionId: generateId() },
   // IMR (1.67%) < MMR (6.25%) -> Instantly Liquidated
-  { name: "Bob (Insta-Liq SHORT)", isLong: false, leverage: 60n * 100n },
+  { name: "Bob (Insta-Liq SHORT)", isLong: false, leverage: 60n * 100n , positionId: generateId() },
   // IMR (6.67%) > MMR (6.25%) -> Highly Vulnerable
-  { name: "Charlie (Vulnerable LONG)", isLong: true, leverage: 158n * 10n },
+  { name: "Charlie (Vulnerable LONG)", isLong: true, leverage: 39n * 100n , positionId: generateId() },
   // IMR (6.67%) > MMR (6.25%) -> Highly Vulnerable
-  { name: "David (Vulnerable SHORT)", isLong: false, leverage: 158n * 10n },
+  { name: "David (Vulnerable SHORT)", isLong: false, leverage: 39n * 100n , positionId: generateId() },
   // IMR (33.3%) >> MMR (6.25%) -> Safe
-  { name: "Ellie (Safe LONG)", isLong: true, leverage: 3n * 100n },
+  { name: "Ellie (Safe LONG)", isLong: true, leverage: 30n * 100n , positionId: generateId() },
   // IMR (33.3%) >> MMR (6.25%) -> Safe
-  { name: "Filip (Safe SHORT)", isLong: false, leverage: 3n * 100n },
+  { name: "Filip (Safe SHORT)", isLong: false, leverage: 30n * 100n , positionId: generateId() },
 ];
 
 const SCENARIO_CONFIG = {
@@ -33,19 +36,20 @@ const SCENARIO_CONFIG = {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function getFormattedPositionInfo(
-  clearingHouse: ClearingHouse,
+  positionId: BytesLike,
+  clearingHouse: ClearingHouseV2,
   oracle: Oracle,
   trader: HardhatEthersSigner,
   MMR_BPS: bigint,
   PRICE_PRECISION: bigint
 ): Promise<string> {
   try {
-    const position = await clearingHouse.positions(trader.address);
+    const position = await clearingHouse.positions(positionId);
     if (position.size === 0n) {
       return "Position closed/liquidated.";
     }
 
-    const [pnl, isSolvent] = await clearingHouse.calculatePnl(trader.address);
+    const [pnl, isSolvent] = await clearingHouse.calculatePnl(positionId);
     const currentPrice = await oracle.getPrice();
 
     // Calculate the liquidation buffer
@@ -86,9 +90,15 @@ async function main() {
   if (!fs.existsSync(deploymentInfoPath)) throw new Error("❌ Deployment info not found!");
   const deploymentInfo = JSON.parse(fs.readFileSync(deploymentInfoPath, "utf-8"));
   const getAddress = (name: string) => { const key = Object.keys(deploymentInfo).find(k => k.endsWith(`#${name}`)); if (!key) throw new Error(`Contract ${name} not found`); return deploymentInfo[key]; };
-  const clearingHouse: ClearingHouse = await ethers.getContractAt("ClearingHouse", getAddress("ClearingHouse"));
+  const clearingHouse: ClearingHouseV2 = await ethers.getContractAt("ClearingHouseV2", getAddress("ClearingHouseV2"));
   const oracle: Oracle = await ethers.getContractAt("Oracle", getAddress("Oracle"));
   const usdcToken: MockERC20 = await ethers.getContractAt("MockERC20", getAddress("MockERC20"));
+
+  console.log("✅ Contracts attached. Addresses :", {
+    clearingHouse: clearingHouse.target,
+    oracle: oracle.target,
+    usdcToken: usdcToken.target,
+  });
   
   // await oracle.connect(deployer).setPrice(SCENARIO_CONFIG.INITIAL_BTC_PRICE);
   // console.log(`✅ Contracts attached. Initial BTC Price set to $${ethers.formatUnits(SCENARIO_CONFIG.INITIAL_BTC_PRICE, 18)}`);
@@ -99,20 +109,20 @@ async function main() {
 
   // Setup Trader Positions
   console.log("\n--- SETUP PHASE: Preparing Trader Positions ---");
-  const traderMap = new Map<string, { name: string, signer: HardhatEthersSigner }>();
+  const traderMap = new Map<string, { name: string, signer: HardhatEthersSigner, positionId: Uint8Array }>();
   const activePositions = new Set<string>();
 
   for (let i = 0; i < TRADER_CONFIG.length; i++) {
     const config = TRADER_CONFIG[i];
     const signer = traderSigners[i];
-    traderMap.set(signer.address, { name: config.name, signer });
+    traderMap.set(signer.address, { name: config.name, signer, positionId: config.positionId });
     activePositions.add(signer.address);
 
     console.log(`\nSetting up ${config.name}...`);
     await usdcToken.connect(deployer).mint(signer.address, SCENARIO_CONFIG.INITIAL_MINT_AMOUNT);
     await usdcToken.connect(signer).approve(await clearingHouse.getAddress(), ethers.MaxUint256);
     await clearingHouse.connect(signer).depositCollateral(SCENARIO_CONFIG.INITIAL_MINT_AMOUNT);
-    await clearingHouse.connect(signer).openPosition(SCENARIO_CONFIG.MARGIN_AMOUNT, config.leverage, config.isLong);
+    await clearingHouse.connect(signer).openPosition(config.positionId, SCENARIO_CONFIG.MARGIN_AMOUNT, config.leverage, config.isLong);
     console.log(`   - Opened position with ${ethers.formatUnits(SCENARIO_CONFIG.MARGIN_AMOUNT, 18)} USDC at ${config.leverage / 100n}x leverage`);
   }
 
@@ -132,30 +142,30 @@ async function main() {
 
     for (const address of activePositions) {
       const traderInfo = traderMap.get(address)!;
-      const statusLine = await getFormattedPositionInfo(clearingHouse, oracle, traderInfo.signer, MMR_BPS, PRICE_PRECISION);
+      const statusLine = await getFormattedPositionInfo(traderInfo.positionId, clearingHouse, oracle, traderInfo.signer, MMR_BPS, PRICE_PRECISION);
       console.log(`   - ${traderInfo.name.padEnd(25)} | ${statusLine}`);
     }
 
     // Manipulate the price
     let currentPrice = await oracle.getPrice();
     let targetExists = false;
-    const charlieAddress = traderSigners[2].address;
-    const davidAddress = traderSigners[3].address;
+    const ellieAddress   = traderSigners[4].address;
+    const filipAddress = traderSigners[5].address;
 
-    if (activePositions.has(charlieAddress)) {
-      console.log("\n   - 🎯 Targeting vulnerable LONG (Charlie). Pushing price DOWN...");
+    if (activePositions.has(ellieAddress)) {
+      console.log("\n   - 🎯 Targeting vulnerable LONG (Ellie). Pushing price DOWN...");
       currentPrice = (currentPrice * (10000n - SCENARIO_CONFIG.PRICE_VOLATILITY_BPS)) / 10000n;
       targetExists = true;
-    } else if (activePositions.has(davidAddress)) {
-      console.log("\n   - 🎯 Targeting vulnerable SHORT (David). Pushing price UP...");
+    } else if (activePositions.has(filipAddress)) {
+      console.log("\n   - 🎯 Targeting vulnerable SHORT (Filip). Pushing price UP...");
       currentPrice = (currentPrice * (10000n + SCENARIO_CONFIG.PRICE_VOLATILITY_BPS)) / 10000n;
       targetExists = true;
     }
 
-    // if (targetExists) {
-    //     await oracle.connect(deployer).setPrice(currentPrice);
-    //     console.log(`   - 🔔 Oracle price updated to: $${ethers.formatUnits(currentPrice, 18)}`);
-    // }
+    if (targetExists) {
+        await oracle.connect(deployer).setPrice(currentPrice);
+        console.log(`   - 🔔 Oracle price updated to: $${ethers.formatUnits(currentPrice, 18)}`);
+    }
   }
 
   console.log("\n--- 🎉 SIMULATION COMPLETE: All vulnerable positions have been liquidated. ---");

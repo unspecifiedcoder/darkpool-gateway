@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Wallet } from 'lucide-react';
 import XythumPerpsLogo from '@/assets/xythum-icon.jpg';
+import { CustomConnectButton } from './CustomConnectButton';
 
 const Header = () => {
   const isConnected = false; // This will be replaced with actual wallet connection state
@@ -12,7 +13,7 @@ const Header = () => {
         <div className="flex items-center pulse-neon rounded-lg gap-3">
           <img 
             src={XythumPerpsLogo} 
-            alt="AstraPerps Logo" 
+            alt="DarkPerps Logo" 
             className="w-14 h-14 rounded-lg"
           />
           <div className="text-2xl font-bold  px-4 py-3 rounded-lg">
@@ -32,10 +33,11 @@ const Header = () => {
             <span className="text-sm font-mono">{address}</span>
           </div>
         ) : (
-          <Button variant="neon" className="gap-2">
-            <Wallet className="w-4 h-4" />
-            Connect Wallet
-          </Button>
+          // <Button variant="neon" className="gap-2">
+          //   <Wallet className="w-4 h-4" />
+          //   Connect Wallet
+          // </Button>
+          <CustomConnectButton />
         )}
       </div>
     </header>

@@ -1,5 +1,6 @@
 {
-  "PerpDexModule#MockERC20": "0xdEca486675c980a654EF269a73Ff6cA25DcED8aC",
-  "PerpDexModule#Oracle": "0xc1584ee10944AEc84657951604166292B1749Ee3",
-  "PerpDexModule#ClearingHouse": "0x9B445c2e0c496d02Bd0e3b21Ec557cB6646B19A4"
+  "FullDexModule#MockERC20": "0xc70Ea483Dd393fD2216eff03564609E99A84C8c2",
+  "FullDexModule#Oracle": "0x343588C339617d40644d99d01a0b49959EeeE97d",
+  "FullDexModule#ClearingHouseV2": "0x179a522523EF2520b423569CdEd8D3E138Bb0cBc",
+  "FullDexModule#PublicFaucet": "0x0a2fb5DAc0Aff0Db279a79F4eDAdB5aFb2AC471b"
 }
