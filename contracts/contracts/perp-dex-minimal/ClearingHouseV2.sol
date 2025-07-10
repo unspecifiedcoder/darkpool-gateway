@@ -102,7 +102,11 @@ contract ClearingHouseV2 is ReentrancyGuard {
         emit PositionOpened(msg.sender, _positionId, size, marginAfterFee, _isLong, entryPrice);
     }
 
-    function closePosition(bytes32 _positionId) external nonReentrant {
+    function closePosition(bytes32 _positionId)
+        external
+        nonReentrant
+        returns (uint256 amountReturned) 
+    {
         Position storage position = positions[_positionId];
         if (position.owner != msg.sender) revert NotPositionOwner();
 
@@ -112,13 +116,19 @@ contract ClearingHouseV2 is ReentrancyGuard {
         uint256 fee = (positionValue * TAKER_FEE_BPS) / BPS_DIVISOR;
 
         int256 netPnl = pnl - int256(fee);
-        int256 amountToReturn = int256(position.margin) + netPnl;
+        int256 totalAmount = int256(position.margin) + netPnl;
 
+        // If the trade was profitable, the house mints the profit.
         if (netPnl > 0) {
             collateralToken.mint(address(this), uint256(netPnl));
         }
-        if (amountToReturn > 0) {
-            freeCollateral[msg.sender] += uint256(amountToReturn);
+        
+        // If totalAmount is positive, add it to the caller's free collateral.
+        if (totalAmount > 0) {
+            freeCollateral[msg.sender] += uint256(totalAmount);
+            amountReturned = uint256(totalAmount); // <-- V3: Set the return value
+        } else {
+            amountReturned = 0; // If they lost everything, 0 is returned.
         }
 
         emit PositionClosed(msg.sender, _positionId, pnl, fee);
@@ -203,3 +213,6 @@ contract ClearingHouseV2 is ReentrancyGuard {
         return _calculatePnl(_positionId);
     }
 }
+
+
+

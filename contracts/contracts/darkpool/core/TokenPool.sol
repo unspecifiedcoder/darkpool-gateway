@@ -36,6 +36,8 @@ contract TokenPool is IAssetPool {
     mapping(uint256 _index => bytes32 _root) public roots;
     mapping(bytes32 _noteID => Note _note) public notes;
 
+    event WithdrawalApproved(address indexed spender, uint256 amount);
+
     struct Note {
         uint256 value;
         bytes32 receiverHash;
@@ -213,6 +215,60 @@ contract TokenPool is IAssetPool {
         }
     }
 
+
+    /**
+     * @notice Allows a user to prove ownership of funds and approve a third-party contract
+     * (like the PrivacyProxy) to spend them. This is a crucial step for moving
+     * funds from the dark pool to the perp DEX.
+     * @param params The ZK proof and public inputs proving ownership of a commitment.
+     * @return leafIndex The index of the new commitment for the user's remaining balance.
+     */
+    function approveWithdrawal(
+        ProofLib.WithdrawOrTransferParams memory params
+    ) external validate_withdraw_proof(params) returns (uint32 leafIndex) {
+        require(isKnownRoot(params.merkle_root()), "AssetPool: Invalid merkle root");
+        check_and_spend_nullifier(params.nullifier());
+
+        leafIndex = tree.insert(params.new_commitment());
+        save_root(tree.currentRoot);
+        emit CommitmentInserted(params.new_commitment(), leafIndex, tree.currentRoot);
+
+        // Instead of transferring, we approve the msg.sender (the PrivacyProxy)
+        // to pull the funds.
+        asset.approve(msg.sender, params.value());
+        
+        // We can emit a specific event for this action
+        emit WithdrawalApproved(msg.sender, params.value());
+        return leafIndex;
+    }
+
+    /**
+     * @notice Allows a trusted contract (the PrivacyProxy) to deposit funds on behalf of a user,
+     * creating a new private note for them. This is used when a user withdraws collateral
+     * from the perp DEX back into the privacy of the dark pool.
+     * @param receiverHash The hash identifying the ultimate recipient of the note.
+     * @param amount The amount of tokens to deposit and create a note for.
+     */
+    function depositFor(bytes32 receiverHash, uint256 amount) external {
+        // For simplicity, we can restrict this to only be callable by a trusted proxy
+        // if needed, or leave it public if the proxy model is the primary interaction.
+        require(amount > 0, "AssetPool: Invalid amount");
+
+        // The proxy must have approved the TokenPool to spend its tokens,
+        // so we pull them into this contract.
+        asset.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Issue a new note, same logic as the transfer function
+        bytes32 noteID = keccak256(abi.encodePacked(address(asset), noteNonce));
+        notes[noteID] = Note({
+            value: amount,
+            receiverHash: receiverHash,
+            claimedBlockNumber: 0
+        });
+        emit NoteCreated(receiverHash, amount, noteNonce);
+        noteNonce++;
+    }
+
     function setWithdrawTransferVerifier(
         address newVerifier
     ) external onlyEntryPoint {
@@ -297,3 +353,8 @@ contract TokenPool is IAssetPool {
 // - claim many
 // - Join, split
 // - Join and withdraw
+// - darkpool features explained
+// - user UI components with respect to darkpool
+// - user private trade lifecycle
+// - offchain service for commitments and user nonces
+// - Final thoughts
