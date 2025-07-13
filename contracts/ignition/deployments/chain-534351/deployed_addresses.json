@@ -1,6 +1,10 @@
 {
-  "FullDexModule#MockERC20": "0xc70Ea483Dd393fD2216eff03564609E99A84C8c2",
-  "FullDexModule#Oracle": "0x343588C339617d40644d99d01a0b49959EeeE97d",
-  "FullDexModule#ClearingHouseV2": "0x179a522523EF2520b423569CdEd8D3E138Bb0cBc",
-  "FullDexModule#PublicFaucet": "0x0a2fb5DAc0Aff0Db279a79F4eDAdB5aFb2AC471b"
+  "PrivacyDexModule#ClaimHonkVerifier": "0xD7CBCc3dbC2258f6Ed762c2eFE2AFC860f5E97c4",
+  "PrivacyDexModule#MockERC20": "0x736e0556C12E6608439194486101e8D32527a491",
+  "PrivacyDexModule#Oracle": "0x5642566bFdf326E4C008dA072912600939E93053",
+  "PrivacyDexModule#Poseidon2": "0xbff11f7293fBb4203751AAfec90815A318325DD7",
+  "PrivacyDexModule#WithdrawTransferHonkVerifier": "0xB690244Ad89cd45BF891B96296Fd6bBf230381De",
+  "PrivacyDexModule#ClearingHouseV2": "0x86c4D07765c947703A03386Bbe899eb2FF9E8fDa",
+  "PrivacyDexModule#TokenPool": "0x29D91c2b4c4a2A23544F1563D0b720fFF228a54b",
+  "PrivacyDexModule#PrivacyProxy": "0xF26Ee78f91FaCD768675B3b364d7F3f9787f948c"
 }

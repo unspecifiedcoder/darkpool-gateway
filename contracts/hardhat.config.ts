@@ -16,6 +16,7 @@ if (!process.env.OPTIMISM_ETHERSCAN_API_KEY) {
 // hardhat 18th
 const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const optimismEtherscanApiKey = process.env.OPTIMISM_ETHERSCAN_API_KEY || "";
+const scrollSepoliaEtherscanApiKey = process.env.SCROLL_SEPOLIA_ETHERSCAN_API_KEY || "";
 // console.log(optimismEtherscanApiKey);
 const config: HardhatUserConfig = {
   sourcify: {
@@ -97,6 +98,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       optimismSepolia: optimismEtherscanApiKey,
+      scrollSepolia: scrollSepoliaEtherscanApiKey,
     },
     customChains: [
       {

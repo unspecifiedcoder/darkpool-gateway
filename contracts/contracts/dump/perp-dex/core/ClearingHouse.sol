@@ -145,8 +145,7 @@ contract ClearingHouseTemp is Ownable {
     }
 
     function setCollateralToken(
-        address _newCollateralToken,
-        bool isSupported /* ignored */
+        address _newCollateralToken
     ) external  onlyOwner {
         require(
             _newCollateralToken != address(0),

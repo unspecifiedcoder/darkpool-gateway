@@ -213,6 +213,8 @@ contract TokenPool is IAssetPool {
                 tree.currentRoot
             );
         }
+
+        emit NoteClaimed(noteID, params.value());
     }
 
 

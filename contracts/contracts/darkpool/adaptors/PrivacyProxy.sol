@@ -41,10 +41,19 @@ contract PrivacyProxy {
     error NotPositionOwner();
 
     // --- Events ---
-    event CollateralDeposited(bytes32 indexed ownerPubKey, uint256 amount, bool fromDarkPool);
+        event CollateralDeposited(bytes32 indexed ownerPubKey, uint256 amount, bool fromDarkPool);
     event CollateralWithdrawn(bytes32 indexed ownerPubKey, bytes32 receiverHash, uint256 amount);
-    event PositionOpened(bytes32 indexed ownerPubKey, bytes32 positionId);
-    event PositionClosed(bytes32 indexed ownerPubKey, bytes32 positionId);
+
+    event PositionOpened(
+        bytes32 indexed ownerPubKey,
+        bytes32 indexed positionId,
+        uint256 size,
+        uint256 margin,
+        bool isLong,
+        uint256 entryPrice
+    );
+    event PositionClosed(bytes32 indexed ownerPubKey, bytes32 indexed positionId);
+
 
     constructor(address _clearingHouse, address _tokenPool) {
         clearingHouse = ClearingHouseV2(_clearingHouse);
@@ -141,7 +150,8 @@ contract PrivacyProxy {
         // 2. Open the position on the ClearingHouse. msg.sender is this proxy contract.
         clearingHouse.openPosition(_positionId, _margin, _leverage, _isLong);
 
-        emit PositionOpened(_ownerPubKey, _positionId);
+        (,uint256 size, uint256 marginAfterFee, uint256 entryPrice,) = clearingHouse.positions(_positionId);
+        emit PositionOpened(_ownerPubKey, _positionId, size, marginAfterFee, _isLong, entryPrice);
     }
 
     function closePosition(bytes32 _positionId, bytes memory _signature) external {

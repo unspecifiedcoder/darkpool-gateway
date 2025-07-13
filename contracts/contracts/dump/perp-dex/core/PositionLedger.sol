@@ -80,7 +80,7 @@ contract PositionLedger is IPositionLedger, Ownable {
         // The `pnl` parameter could be passed in by ClearingHouse after calculating it.
         // For now, we'll just delete and let ClearingHouse emit a more detailed event.
 
-        uint256 closedSize = position.size; // Store before deleting for event
+        // uint256 closedSize = position.size; // Store before deleting for event
         // Simulate PnL being passed (or ClearingHouse will calculate it before calling this)
         // For the event, let's assume PnL is 0 here as this contract doesn't know the exit price.
         // The actual PnL should come from ClearingHouse.
