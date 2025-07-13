@@ -41,4 +41,10 @@ jobs:
           context: ./perp-minimal-backend/liquidation-bot
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/liquidation-bot:latest
-          # Example tag: ghcr.io/your-username/liquidation-bot:latest
+
+      - name: Build and push Indexer Server image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./perp-minimal-backend/indexer-server
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/indexer-server:latest
