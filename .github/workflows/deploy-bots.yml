@@ -4,10 +4,8 @@ name: Build and Push Bot Docker Images
 on:
   push:
     branches: [ "main" ]
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# IMPORTANT: Grant permissions for the GITHUB_TOKEN to write to packages
 permissions:
   contents: read
   packages: write
@@ -30,10 +28,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./perp-minimal-backend/oracle-bot
-          # The context is the directory containing the Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/oracle-bot:latest
-          # Example tag: ghcr.io/your-username/oracle-bot:latest
 
       - name: Build and push Liquidation Bot image
         uses: docker/build-push-action@v5

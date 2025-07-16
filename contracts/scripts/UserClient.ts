@@ -26,7 +26,9 @@ interface ApiPosition {
   }
   interface ApiNote {
     note_id: string;
-    note: { note_nonce: number; value: string; receiver_hash: string };
+    note_nonce: number;
+    value: string;
+    receiver_hash: string;
   }
 // =================================================================
 // == USER CLIENT CLASS: MIMICS A REAL FRONTEND APPLICATION
@@ -49,7 +51,7 @@ export class UserClient {
   }
 
   static async create(signer: HardhatEthersSigner): Promise<UserClient> {
-    const signature = await signer.signMessage("DarkPerps Login Secret v1");
+    const signature = await signer.signMessage("DarkPerps Login Secret v1" + Date.now().toString());
     const privateKey = ethers.keccak256(signature);
     const client = new UserClient(signer, privateKey);
     client.receiverHash = await poseidon2Hash([client.receiverSecret]);
@@ -57,14 +59,20 @@ export class UserClient {
   }
 
   private encrypt(data: UserMetadata): string {
-    const json = JSON.stringify(data);
-    return Buffer.from(json).toString('base64');
+    // console.log("encrypting metadata... : ", JSON.stringify(data));
+    return JSON.stringify(data);
   }
 
   private decrypt(blob: string): UserMetadata {
-    const json = Buffer.from(blob, 'base64').toString('utf-8');
-    return JSON.parse(json);
+    // console.log("decrypting metadata... : ", blob , this.hexToString(blob)); 
+    return JSON.parse(this.hexToString(blob));
   }
+
+  private hexToString(hex: string): string {
+    const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    return new TextDecoder().decode(bytes);
+}
+
 
   private async getAuthHeaders(message: string): Promise<any> {
     const signature = await this.secretWallet.signMessage(message);
@@ -118,20 +126,20 @@ export class UserClient {
   }
 
   async getUnspentNotes(): Promise<ApiNote[]> {
-    const headers = { "X-Receiver-Hash": "0x" + this.receiverHash.toString() };
+    const headers = { "X-Receiver-Hash": this.receiverHash.toString() };
     const { data } = await axios.get<{ unspent_notes: ApiNote[] }>(`${INDEXER_API_URL}/notes/unspent`, { headers });
     return data.unspent_notes;
   }
 
   getSecret(): bigint {
-    return BigInt(this.secretWallet.privateKey);
+    return BigInt(this.secretWallet.privateKey) % Fr.MODULUS;
   }
 
   getNextNullifier(): bigint {
     this.currentMetadata.last_used_nullifier_nonce++;
     const secretKey = this.secretWallet.privateKey;
     const nonce = this.currentMetadata.last_used_nullifier_nonce;
-    return BigInt(ethers.solidityPackedKeccak256(["bytes32", "uint256"], [secretKey, nonce]));
+    return BigInt(ethers.solidityPackedKeccak256(["bytes32", "uint256"], [secretKey, nonce])) % Fr.MODULUS;
   }
 
   // A method to update the user's single private commitment record

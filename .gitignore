@@ -2,3 +2,4 @@
 *node_modules*
 *target*
 .env
+perp-minimal-backend/indexer-server/darkpool_db/

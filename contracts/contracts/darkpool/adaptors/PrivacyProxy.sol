@@ -1,4 +1,3 @@
-// contracts/proxy/PrivacyProxy.sol
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
@@ -60,7 +59,6 @@ contract PrivacyProxy {
         tokenPool = TokenPool(_tokenPool);
         collateralToken = clearingHouse.collateralToken();
 
-        // The proxy needs to approve the ClearingHouse to spend its collateral
         collateralToken.approve(address(clearingHouse), type(uint256).max);
     }
 
@@ -70,13 +68,10 @@ contract PrivacyProxy {
      * @notice Deposits collateral from a user's EOA into their private trading account.
      */
     function depositCollateralFromEOA(bytes32 _ownerPubKey, uint256 _amount) external {
-        // 1. Pull funds from the user's wallet into this proxy contract.
         collateralToken.safeTransferFrom(msg.sender, address(this), _amount);
         
-        // 2. Deposit those funds from the proxy into the ClearingHouse.
         clearingHouse.depositCollateral(_amount);
 
-        // 3. Credit the user's private account within the proxy.
         userFreeCollateral[_ownerPubKey] += _amount;
 
         emit CollateralDeposited(_ownerPubKey, _amount, false);
@@ -86,17 +81,13 @@ contract PrivacyProxy {
      * @notice Deposits collateral from a user's private balance in the TokenPool.
      */
     function depositCollateralFromDarkPool(bytes32 _ownerPubKey, ProofLib.WithdrawOrTransferParams memory _params) external {
-        // 1. User proves ownership of funds. The TokenPool approves this proxy to spend them.
         tokenPool.approveWithdrawal(_params);
 
-        // 2. Pull the approved funds from the TokenPool into this proxy contract.
         uint256 amount = _params.value();
         collateralToken.safeTransferFrom(address(tokenPool), address(this), amount);
         
-        // 3. Deposit funds from the proxy into the ClearingHouse.
         clearingHouse.depositCollateral(amount);
 
-        // 4. Credit the user's private account.
         userFreeCollateral[_ownerPubKey] += amount;
 
         emit CollateralDeposited(_ownerPubKey, amount, true);
@@ -113,15 +104,11 @@ contract PrivacyProxy {
         
         if (_amount > userFreeCollateral[_ownerPubKey]) revert InsufficientProxyCollateral();
 
-        // 1. Withdraw from the ClearingHouse into this proxy contract.
         clearingHouse.withdrawCollateral(_amount);
 
-        // 2. Deposit into the TokenPool to create a private note for the user.
-        // The TokenPool will pull the funds from this contract.
         collateralToken.approve(address(tokenPool), _amount);
         tokenPool.depositFor(_receiverHash, _amount);
 
-        // 3. Debit the user's private account.
         userFreeCollateral[_ownerPubKey] -= _amount;
 
         emit CollateralWithdrawn(_ownerPubKey, _receiverHash, _amount);
@@ -143,11 +130,9 @@ contract PrivacyProxy {
 
         if (_margin > userFreeCollateral[_ownerPubKey]) revert InsufficientProxyCollateral();
 
-        // 1. Debit user's collateral and record ownership of the position.
         userFreeCollateral[_ownerPubKey] -= _margin;
         positionOwner[_positionId] = _ownerPubKey;
 
-        // 2. Open the position on the ClearingHouse. msg.sender is this proxy contract.
         clearingHouse.openPosition(_positionId, _margin, _leverage, _isLong);
 
         (,uint256 size, uint256 marginAfterFee, uint256 entryPrice,) = clearingHouse.positions(_positionId);
@@ -157,16 +142,12 @@ contract PrivacyProxy {
     function closePosition(bytes32 _positionId, bytes memory _signature) external {
         bytes32 ownerPubKey = _validatePositionOwner(_positionId, "CLOSE_POSITION", _signature);
         
-        // 1. Close the position on the ClearingHouse and CAPTURE the returned amount.
         uint256 amountReturned = clearingHouse.closePosition(_positionId);
 
-        // 2. Immediately and accurately credit the user's private balance.
-        // The original margin was debited on open, so we credit the full return.
         if (amountReturned > 0) {
             userFreeCollateral[ownerPubKey] += amountReturned;
         }
 
-        // 3. Clean up the position ownership record.
         delete positionOwner[_positionId];
         
         emit PositionClosed(ownerPubKey, _positionId);
@@ -183,8 +164,6 @@ contract PrivacyProxy {
     function removeMargin(bytes32 _positionId, uint256 _amount, bytes memory _signature) external {
         _validatePositionOwner(_positionId, "REMOVE_MARGIN", _signature);
 
-        // When margin is removed, it goes from the position back to the ClearingHouse's free collateral pool
-        // (which is owned by this proxy). We then credit the user's internal account.
         clearingHouse.removeMargin(_positionId, _amount);
         userFreeCollateral[positionOwner[_positionId]] += _amount;
     }
@@ -202,7 +181,7 @@ contract PrivacyProxy {
     
     function _validatePositionOwner(bytes32 _positionId, string memory _action, bytes memory _signature) internal view returns (bytes32) {
         bytes32 ownerPubKey = positionOwner[_positionId];
-        if(ownerPubKey == bytes32(0)) revert NotPositionOwner(); // Or PositionNotFound
+        if(ownerPubKey == bytes32(0)) revert NotPositionOwner(); 
         
         bytes32 messageHash = keccak256(abi.encodePacked(_action, _positionId));
         _verifySignature(ownerPubKey, messageHash, _signature);

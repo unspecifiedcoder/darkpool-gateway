@@ -1,12 +1,12 @@
 use anyhow::Result;
 use sled::{Db, Tree};
-use std::sync::Arc;
+use std::{fmt::format, sync::Arc};
 
 use crate::models::{HistoricalPosition, PaginatedResponse, Position, PositionStatus, UnspentNote};
 
 #[derive(Clone)]
 pub struct Database {
-    db: Arc<Db>,
+    _db: Arc<Db>,
     // K: owner_pub_key (bytes), V: Vec<Position> (json)
     pub open_positions: Tree,
     // K: owner_pub_key (bytes), V: Vec<HistoricalPosition> (json)
@@ -22,14 +22,14 @@ pub struct Database {
 
 impl Database {
     pub fn new(path: &str) -> Result<Self> {
-        let db = Arc::new(sled::open(path)?);
+        let _db = Arc::new(sled::open(path)?);
         Ok(Self {
-            open_positions: db.open_tree("open_positions")?,
-            historical_positions: db.open_tree("historical_positions")?,
-            unspent_notes: db.open_tree("unspent_notes")?,
-            user_metadata: db.open_tree("user_metadata")?,
-            position_id_to_owner: db.open_tree("pos_id_to_owner")?,
-            db,
+            open_positions: _db.open_tree("open_positions")?,
+            historical_positions: _db.open_tree("historical_positions")?,
+            unspent_notes: _db.open_tree("unspent_notes")?,
+            user_metadata: _db.open_tree("user_metadata")?,
+            position_id_to_owner: _db.open_tree("pos_id_to_owner")?,
+            _db,
         })
     }
 
@@ -40,19 +40,27 @@ impl Database {
             positions.push(position.clone());
         }
         self.open_positions.insert(owner_pub_key, serde_json::to_vec(&positions)?)?;
-        self.position_id_to_owner.insert(position.position_id.as_bytes(), owner_pub_key)?;
+        self.position_id_to_owner.insert(position.position_id.clone(), owner_pub_key)?;
+        // println!("Inserted position Id for {:#?} owner {:#?}" , position.position_id, hex::encode(owner_pub_key));
         Ok(())
     }
 
     pub fn move_to_historical(&self, position_id: &[u8], status: PositionStatus, final_pnl: String) -> Result<()> {
-        let owner_pub_key = match self.position_id_to_owner.get(position_id)? {
+        // println!("Moving to historical records {:#?}" , format!("0x{}" , hex::encode(position_id)));
+        let owner_pub_key = match self.position_id_to_owner.get(format!("0x{}" , hex::encode(position_id)))? {
             Some(pk) => pk,
             None => return Ok(()), // Position owner not found, maybe already processed
         };
+
+        // println!("Owner of position {:#?}" , hex::encode(&owner_pub_key));
         
         let mut open_positions = self.get_open_positions(&owner_pub_key)?;
-        if let Some(index) = open_positions.iter().position(|p| p.position_id.as_bytes() == position_id) {
+        open_positions.iter().for_each(|p| {
+            // println!("Positions for user {:#?} and current position id to remove {:#?} are they equal {}" , p.position_id.replace("0x", "") , hex::encode(position_id) , p.position_id.replace("0x", "") == hex::encode(position_id));
+        });
+        if let Some(index) = open_positions.iter().position(|p| p.position_id.replace("0x", "") == hex::encode(position_id)) {
             let position_to_move = open_positions.remove(index);
+            // println!("Position found {}" , index);
             self.open_positions.insert(&owner_pub_key, serde_json::to_vec(&open_positions)?)?;
             
             let historical_pos = HistoricalPosition {
@@ -64,8 +72,11 @@ impl Database {
             let mut historical_positions = self.get_historical_positions_internal(&owner_pub_key)?;
             historical_positions.insert(0, historical_pos); // Insert at the beginning for chronological order
             self.historical_positions.insert(&owner_pub_key, serde_json::to_vec(&historical_positions)?)?;
-            self.position_id_to_owner.remove(position_id)?;
+            self.position_id_to_owner.remove(format!("0x{}" , hex::encode(position_id)))?;
+
+            // println!("Removed position {:#?}" , position_id);
         }
+
         Ok(())
     }
 
@@ -137,7 +148,7 @@ impl Database {
             let (key, value) = item?;
             let mut notes: Vec<UnspentNote> = serde_json::from_slice(&value)?;
             let original_len = notes.len();
-            notes.retain(|n| n.note_id.as_bytes() != note_id_to_remove);
+            notes.retain(|n| n.note_id != format!("0x{}", hex::encode(note_id_to_remove)));
             if notes.len() < original_len {
                 self.unspent_notes.insert(key, serde_json::to_vec(&notes)?)?;
                 return Ok(());

@@ -49,7 +49,7 @@ pub async fn run_indexer(
             return Err(e.into());
         }
     };
-    
+
     let mut from_block = 0;
     println!(
         "[Indexer] Starting historical sync from block {} to {}",
@@ -240,11 +240,21 @@ async fn handle_note_created(
     log: token_pool_v2::NoteCreatedFilter,
     token_address: Address,
 ) -> Result<()> {
-    let encoded_data = ethers::abi::encode_packed(&[
-        ethers::abi::Token::Address(token_address),
-        ethers::abi::Token::Uint(log.note_nonce),
-    ])?;
-    let note_id = ethers::utils::keccak256(encoded_data);
+    let mut nonce_bytes = [0u8; 32];
+    let note_nonce = U256::from(log.note_nonce);
+    note_nonce.to_big_endian(&mut nonce_bytes);
+    let address_bytes = token_address.as_bytes();
+    let mut encoded_data = Vec::new();
+    encoded_data.extend_from_slice(address_bytes);
+    encoded_data.extend_from_slice(&nonce_bytes);
+
+    let note_id = ethers::utils::keccak256(&encoded_data);
+    println!(
+        "[Indexer] NoteCreated: Note ID 0x{} with encoded data {:#?} where nonce is {}",
+        hex::encode(note_id),
+        hex::encode(encoded_data),
+        log.note_nonce
+    );
     let unspent_note = UnspentNote {
         note_id: format!("0x{}", hex::encode(note_id)),
         note: crate::models::Note {
