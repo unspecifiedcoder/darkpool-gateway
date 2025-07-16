@@ -299,7 +299,7 @@ async fn handle_note_created(
             value: log.amount.to_string(),
         },
     };
-    println!("Note added {}" , hex::encode(note_id));
+    println!("Note added {}", hex::encode(note_id));
     db.add_unspent_note(&unspent_note).map_err(|e| {
         eprintln!("[Indexer ERROR] Failed to add unspent note: {}", e);
         e

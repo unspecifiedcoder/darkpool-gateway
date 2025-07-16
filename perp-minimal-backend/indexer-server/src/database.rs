@@ -1,6 +1,6 @@
 use anyhow::Result;
 use sled::{Db, Tree};
-use std::{fmt::format, sync::Arc};
+use std::sync::Arc;
 
 use crate::models::{HistoricalPosition, PaginatedResponse, Position, PositionStatus, UnspentNote};
 
@@ -33,46 +33,63 @@ impl Database {
         })
     }
 
-
     pub fn add_open_position(&self, owner_pub_key: &[u8], position: Position) -> Result<()> {
         let mut positions = self.get_open_positions(owner_pub_key)?;
-        if !positions.iter().any(|p| p.position_id == position.position_id) {
+        if !positions
+            .iter()
+            .any(|p| p.position_id == position.position_id)
+        {
             positions.push(position.clone());
         }
-        self.open_positions.insert(owner_pub_key, serde_json::to_vec(&positions)?)?;
-        self.position_id_to_owner.insert(position.position_id.clone(), owner_pub_key)?;
+        self.open_positions
+            .insert(owner_pub_key, serde_json::to_vec(&positions)?)?;
+        self.position_id_to_owner
+            .insert(position.position_id.clone(), owner_pub_key)?;
         // println!("Inserted position Id for {:#?} owner {:#?}" , position.position_id, hex::encode(owner_pub_key));
         Ok(())
     }
 
-    pub fn move_to_historical(&self, position_id: &[u8], status: PositionStatus, final_pnl: String) -> Result<()> {
+    pub fn move_to_historical(
+        &self,
+        position_id: &[u8],
+        status: PositionStatus,
+        final_pnl: String,
+    ) -> Result<()> {
         // println!("Moving to historical records {:#?}" , format!("0x{}" , hex::encode(position_id)));
-        let owner_pub_key = match self.position_id_to_owner.get(format!("0x{}" , hex::encode(position_id)))? {
+        let owner_pub_key = match self
+            .position_id_to_owner
+            .get(format!("0x{}", hex::encode(position_id)))?
+        {
             Some(pk) => pk,
             None => return Ok(()), // Position owner not found, maybe already processed
         };
 
         // println!("Owner of position {:#?}" , hex::encode(&owner_pub_key));
-        
+
         let mut open_positions = self.get_open_positions(&owner_pub_key)?;
-        open_positions.iter().for_each(|p| {
-            // println!("Positions for user {:#?} and current position id to remove {:#?} are they equal {}" , p.position_id.replace("0x", "") , hex::encode(position_id) , p.position_id.replace("0x", "") == hex::encode(position_id));
-        });
-        if let Some(index) = open_positions.iter().position(|p| p.position_id.replace("0x", "") == hex::encode(position_id)) {
+
+        if let Some(index) = open_positions
+            .iter()
+            .position(|p| p.position_id.replace("0x", "") == hex::encode(position_id))
+        {
             let position_to_move = open_positions.remove(index);
             // println!("Position found {}" , index);
-            self.open_positions.insert(&owner_pub_key, serde_json::to_vec(&open_positions)?)?;
-            
+            self.open_positions
+                .insert(&owner_pub_key, serde_json::to_vec(&open_positions)?)?;
+
             let historical_pos = HistoricalPosition {
                 position: position_to_move,
                 status,
                 final_pnl,
             };
 
-            let mut historical_positions = self.get_historical_positions_internal(&owner_pub_key)?;
+            let mut historical_positions =
+                self.get_historical_positions_internal(&owner_pub_key)?;
             historical_positions.insert(0, historical_pos); // Insert at the beginning for chronological order
-            self.historical_positions.insert(&owner_pub_key, serde_json::to_vec(&historical_positions)?)?;
-            self.position_id_to_owner.remove(format!("0x{}" , hex::encode(position_id)))?;
+            self.historical_positions
+                .insert(&owner_pub_key, serde_json::to_vec(&historical_positions)?)?;
+            self.position_id_to_owner
+                .remove(format!("0x{}", hex::encode(position_id)))?;
 
             // println!("Removed position {:#?}" , position_id);
         }
@@ -135,25 +152,38 @@ impl Database {
     // --- Note Management ---
 
     pub fn add_unspent_note(&self, note: &UnspentNote) -> Result<()> {
-        let receiver_hash_bytes = hex::decode(note.note.receiver_hash.strip_prefix("0x").unwrap_or(&note.note.receiver_hash))?;
+        let receiver_hash_bytes = hex::decode(
+            note.note
+                .receiver_hash
+                .strip_prefix("0x")
+                .unwrap_or(&note.note.receiver_hash),
+        )?;
         let mut notes = self.get_unspent_notes(&receiver_hash_bytes)?;
         notes.push(note.clone());
-        self.unspent_notes.insert(receiver_hash_bytes, serde_json::to_vec(&notes)?)?;
-        println!("Note added {}" , format!("{}", note.note_id));
+        self.unspent_notes
+            .insert(receiver_hash_bytes, serde_json::to_vec(&notes)?)?;
+        println!("Note added {}", format!("{}", note.note_id));
         Ok(())
     }
 
-
     pub fn remove_unspent_note(&self, note_id_to_remove: &[u8]) -> Result<()> {
-        println!("Removing Note {}" , format!("0x{}", hex::encode(note_id_to_remove)));
+        println!(
+            "Removing Note {}",
+            format!("0x{}", hex::encode(note_id_to_remove))
+        );
         for item in self.unspent_notes.iter() {
             let (key, value) = item?;
             let mut notes: Vec<UnspentNote> = serde_json::from_slice(&value)?;
             let original_len = notes.len();
             notes.retain(|n| n.note_id != format!("0x{}", hex::encode(note_id_to_remove)));
             if notes.len() < original_len {
-                self.unspent_notes.insert(key, serde_json::to_vec(&notes)?)?;
-                println!("Note retained {} now notes length {}" , format!("0x{}", hex::encode(note_id_to_remove)), notes.len());
+                self.unspent_notes
+                    .insert(key, serde_json::to_vec(&notes)?)?;
+                println!(
+                    "Note retained {} now notes length {}",
+                    format!("0x{}", hex::encode(note_id_to_remove)),
+                    notes.len()
+                );
                 return Ok(());
             }
         }
@@ -166,7 +196,6 @@ impl Database {
             None => Ok(Vec::new()),
         }
     }
-
 
     // pub fn set_user_metadata(&self, owner_pub_key: &[u8], encrypted_blob: Vec<u8>) -> Result<()> {
     //     self.user_metadata.insert(owner_pub_key, encrypted_blob)?;

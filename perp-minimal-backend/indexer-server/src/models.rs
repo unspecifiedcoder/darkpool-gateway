@@ -11,7 +11,7 @@ pub enum PositionStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Position {
-    pub position_id: String, 
+    pub position_id: String,
     pub is_long: bool,
     pub entry_price: String, // U256 as string
     pub margin: String,      // U256 as string
@@ -31,13 +31,13 @@ pub struct HistoricalPosition {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Note {
     pub note_nonce: u64,
-    pub receiver_hash: String, 
-    pub value: String,         // U256 as string
+    pub receiver_hash: String,
+    pub value: String, // U256 as string
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnspentNote {
-    pub note_id: String, 
+    pub note_id: String,
     #[serde(flatten)]
     pub note: Note,
 }

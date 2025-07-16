@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     println!("✅ Ethereum provider connected.");
 
     // log block number
-    println!("config.rpc_url {}" , config.rpc_url);
+    println!("config.rpc_url {}", config.rpc_url);
     let _latest_block = match provider.get_block_number().await {
         Ok(block_num) => block_num.as_u64(),
         Err(e) => {
@@ -39,9 +39,13 @@ async fn main() -> Result<()> {
 
     // 4. Start the two main services concurrently
     println!("🚀 Starting API Server and Blockchain Indexer...");
-    
+
     let api_handle = tokio::spawn(api::run_api_server(Arc::clone(&config), Arc::clone(&db)));
-    let indexer_handle = tokio::spawn(indexer::run_indexer(Arc::clone(&config), Arc::clone(&db), Arc::clone(&provider)));
+    let indexer_handle = tokio::spawn(indexer::run_indexer(
+        Arc::clone(&config),
+        Arc::clone(&db),
+        Arc::clone(&provider),
+    ));
 
     // Keep the application running and handle exits gracefully
     tokio::select! {

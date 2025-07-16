@@ -46,12 +46,12 @@ async fn check_auth(headers: &HeaderMap) -> Result<[u8; 32], StatusCode> {
     // println!("[AUTH] Decoding signature from header");
     let sig_bytes =
         hex::decode(sig_header.strip_prefix("0x").unwrap_or(sig_header)).map_err(|e| {
-            // println!("[AUTH] Error decoding signature: {}", e);
+            println!("[AUTH] Error decoding signature: {}", e);
             StatusCode::BAD_REQUEST
         })?;
     let signature =
         ethers::core::types::Signature::try_from(sig_bytes.as_slice()).map_err(|e| {
-            // println!("[AUTH] Error creating signature from bytes: {}", e);
+            println!("[AUTH] Error creating signature from bytes: {}", e);
             StatusCode::BAD_REQUEST
         })?;
     // println!("[AUTH] Signature decoded successfully");
@@ -59,7 +59,7 @@ async fn check_auth(headers: &HeaderMap) -> Result<[u8; 32], StatusCode> {
     // 2. Recover the EOA address from the signature and message
     // println!("[AUTH] Recovering EOA address");
     let recovered_addr = signature.recover(msg_header).map_err(|e| {
-        // println!("[AUTH] Error recovering address: {}", e);
+        println!("[AUTH] Error recovering address: {}", e);
         StatusCode::UNAUTHORIZED
     })?;
     // println!("[AUTH] EOA address recovered: {:?}", recovered_addr);
@@ -104,7 +104,10 @@ async fn get_private_historical_positions(
     let positions = db
         .get_historical_positions(&owner_pub_key, pagination.cursor, page_size)
         .map_err(|e| {
-            // println!("[API] Error getting historical positions from database: {}", e);
+            println!(
+                "[API] Error getting historical positions from database: {}",
+                e
+            );
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
     // println!("[API] Successfully retrieved historical positions");
@@ -133,12 +136,12 @@ async fn get_unspent_notes(
             .unwrap_or(receiver_hash_header),
     )
     .map_err(|e| {
-        // println!("[API] Error decoding receiver hash: {}", e);
+        println!("[API] Error decoding receiver hash: {}", e);
         StatusCode::BAD_REQUEST
     })?;
     // println!("[API] Attempting to get unspent notes for receiver hash: {:?}", hex::encode(&receiver_hash));
     let notes = db.get_unspent_notes(&receiver_hash).map_err(|e| {
-        // println!("[API] Error getting unspent notes from database: {}", e);
+        println!("[API] Error getting unspent notes from database: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     // println!("[API] Successfully retrieved {} unspent notes", notes.len());
@@ -160,7 +163,7 @@ async fn set_metadata(
     db.user_metadata
         .insert(owner_pub_key, body.to_vec())
         .map_err(|e| {
-            // println!("[API] Error setting metadata in database: {}", e);
+            println!("[API] Error setting metadata in database: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
     // println!("[API] Successfully set metadata Body {:#?}", body);
@@ -173,7 +176,7 @@ async fn get_metadata(State(db): AppState, headers: HeaderMap) -> Result<Json<Va
     let owner_pub_key = check_auth(&headers).await?;
     // println!("[API] Attempting to get metadata for public key: {:?}", hex::encode(owner_pub_key));
     let metadata = db.user_metadata.get(&owner_pub_key).map_err(|e| {
-        // println!("[API] Error getting metadata from database: {}", e);
+        println!("[API] Error getting metadata from database: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     // println!("[API] Successfully retrieved metadata");
@@ -216,6 +219,11 @@ async fn get_historical_positions_for_address(
     Ok(Json(positions))
 }
 
+// health route
+async fn health() -> Result<Json<Value>, StatusCode> {
+    Ok(Json(serde_json::json!({ "status": "ok" })))
+}
+
 pub async fn run_api_server(config: Arc<Config>, db: Arc<Database>) -> Result<()> {
     // println!("[API Server] Initializing API server...");
     let cors = CorsLayer::new()
@@ -232,9 +240,13 @@ pub async fn run_api_server(config: Arc<Config>, db: Arc<Database>) -> Result<()
             get(get_historical_positions_for_address),
         )
         .route("/private/positions/open", get(get_private_open_positions))
-        .route("/private/positions/history", get(get_private_historical_positions))
+        .route(
+            "/private/positions/history",
+            get(get_private_historical_positions),
+        )
         .route("/private/notes/unspent", get(get_unspent_notes))
         .route("/private/metadata", get(get_metadata).post(set_metadata))
+        .route("/health", get(health))
         .with_state(Arc::clone(&db))
         .layer(cors);
 
