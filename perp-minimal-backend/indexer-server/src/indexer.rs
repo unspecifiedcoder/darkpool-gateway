@@ -37,7 +37,7 @@ pub async fn run_indexer(
     println!("[Indexer] Listening for events from all relevant contracts...");
 
     // Get the latest block on the chain
-    let latest_block = match provider.get_block_number().await {
+    let mut from_block = match provider.get_block_number().await {
         Ok(block_num) => block_num.as_u64(),
         Err(e) => {
             // This will print the *actual* root cause before crashing
@@ -49,12 +49,7 @@ pub async fn run_indexer(
             return Err(e.into());
         }
     };
-
-    let mut from_block = 0;
-    println!(
-        "[Indexer] Starting historical sync from block {} to {}",
-        from_block, latest_block
-    );
+    let latest_block = from_block.clone(); // Temp fix: Todo take from block from config
 
     while from_block <= latest_block {
         let to_block = (from_block + BLOCK_CHUNK_SIZE - 1).min(latest_block);
