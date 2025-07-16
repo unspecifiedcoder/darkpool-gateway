@@ -7,7 +7,7 @@ import { poseidon2Hash } from "@aztec/foundation/crypto";
 import { Fr } from "@aztec/foundation/fields";
 
 // --- CONFIG & TYPES ---
-const INDEXER_API_URL = "http://localhost:3000";
+const INDEXER_API_URL = "http://localhost:3000/private";
 
 export interface UserMetadata {
   last_used_nullifier_nonce: number;

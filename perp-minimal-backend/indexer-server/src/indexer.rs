@@ -138,6 +138,9 @@ pub async fn run_indexer(
     let note_claimed_filter = token_pool_contract
         .note_claimed_filter()
         .from_block(start_realtime_block);
+    let public_pos_opened = ch_contract
+        .position_opened_filter()
+        .from_block(start_realtime_block);
 
     // Event Streams - Listen from block 0 to sync history
     let mut pos_open_stream = pos_open_filter.stream().await?;
@@ -145,6 +148,7 @@ pub async fn run_indexer(
     let mut pos_liquidated_stream = pos_liquidated_filter.stream().await?;
     let mut note_created_stream = note_created_filter.stream().await?;
     let mut note_claimed_stream = note_claimed_filter.stream().await?;
+    let mut public_pos_open_stream = public_pos_opened.stream().await?;
 
     loop {
         tokio::select! {
@@ -168,11 +172,48 @@ pub async fn run_indexer(
                     Ok(log) => { let _ = handle_note_claimed(&db, log); },
                     Err(e) => eprintln!("[Indexer ERROR] NoteClaimed stream error: {}", e),
                 },
+                Some(event) = public_pos_open_stream.next() => match event {
+                    Ok(log) => { let _ = handle_public_pos_opened(&db, log, proxy_address); },
+                    Err(e) => eprintln!("[Indexer ERROR] NoteClaimed stream error: {}", e),
+                }
         };
     }
 }
 
-// In src/indexer.rs, before run_indexer
+fn handle_public_pos_opened(
+    db: &Database,
+    log: clearing_house_v2::PositionOpenedFilter,
+    proxy_address: Address,
+) -> Result<()> {
+    if log.user == proxy_address {
+        return Ok(());
+    }
+
+    println!(
+        "[Indexer] Public PositionOpened for user {}: ID 0x{}",
+        log.user,
+        hex::encode(log.position_id)
+    );
+    let position = Position {
+        position_id: format!("0x{}", hex::encode(log.position_id)),
+        is_long: log.is_long,
+        entry_price: log.entry_price.to_string(),
+        margin: log.margin.to_string(),
+        size: log.size.to_string(),
+    };
+    let mut owner_id = [0u8; 32];
+    owner_id[12..].copy_from_slice(log.user.as_bytes());
+
+    db.add_open_position(&owner_id, position).map_err(|e| {
+        eprintln!(
+            "[Indexer ERROR] Failed to add public open position to DB: {}",
+            e
+        );
+        e
+    })?;
+
+    Ok(())
+}
 
 /// Handles a PositionOpened event.
 fn handle_position_opened(db: &Database, log: privacy_proxy::PositionOpenedFilter) -> Result<()> {
@@ -188,7 +229,7 @@ fn handle_position_opened(db: &Database, log: privacy_proxy::PositionOpenedFilte
         size: log.size.to_string(),
     };
     db.add_open_position(&log.owner_pub_key, position)
-        .map_err(|e| {
+        .map_err(|e: anyhow::Error| {
             eprintln!("[Indexer ERROR] Failed to add open position to DB: {}", e);
             e
         })?;
@@ -263,6 +304,7 @@ async fn handle_note_created(
             value: log.amount.to_string(),
         },
     };
+    println!("Note added {}" , hex::encode(note_id));
     db.add_unspent_note(&unspent_note).map_err(|e| {
         eprintln!("[Indexer ERROR] Failed to add unspent note: {}", e);
         e

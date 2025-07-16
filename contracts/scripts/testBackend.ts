@@ -317,8 +317,9 @@ async function main() {
     await triffiny.postMetadata();
   }
 
-  await sleep(6000);
+  await sleep(15000);
   triffinyNotes = await triffiny.getUnspentNotes();
+  console.log("Triffiny's notes after claims:", triffinyNotes, await triffiny.getUnspentNotes());
   expect(triffinyNotes.length).to.equal(0);
   sublog("Verified via API: Triffiny has no more unspent notes.");
 

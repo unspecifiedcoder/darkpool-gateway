@@ -139,11 +139,13 @@ impl Database {
         let mut notes = self.get_unspent_notes(&receiver_hash_bytes)?;
         notes.push(note.clone());
         self.unspent_notes.insert(receiver_hash_bytes, serde_json::to_vec(&notes)?)?;
+        println!("Note added {}" , format!("{}", note.note_id));
         Ok(())
     }
 
 
     pub fn remove_unspent_note(&self, note_id_to_remove: &[u8]) -> Result<()> {
+        println!("Removing Note {}" , format!("0x{}", hex::encode(note_id_to_remove)));
         for item in self.unspent_notes.iter() {
             let (key, value) = item?;
             let mut notes: Vec<UnspentNote> = serde_json::from_slice(&value)?;
@@ -151,6 +153,7 @@ impl Database {
             notes.retain(|n| n.note_id != format!("0x{}", hex::encode(note_id_to_remove)));
             if notes.len() < original_len {
                 self.unspent_notes.insert(key, serde_json::to_vec(&notes)?)?;
+                println!("Note retained {} now notes length {}" , format!("0x{}", hex::encode(note_id_to_remove)), notes.len());
                 return Ok(());
             }
         }
