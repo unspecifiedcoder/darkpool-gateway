@@ -34,7 +34,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-      
       <FaucetModal />
     </div>
   );

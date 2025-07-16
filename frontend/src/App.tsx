@@ -6,9 +6,23 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
+import { useEffect } from "react";
+import { useAccount } from "wagmi";
+import { useAppActions } from "./store/useAppStore";
+
+
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  const { address } = useAccount();
+  const { disconnectUserClient } = useAppActions();
+
+  useEffect(() => {
+    disconnectUserClient();
+  }, [address, disconnectUserClient]);
+
+  return (
+  
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -16,12 +30,11 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+)};
 
 export default App;

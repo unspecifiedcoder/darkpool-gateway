@@ -13,6 +13,9 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        bot: [oracle-bot, liquidation-bot, indexer-server]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,23 +27,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Oracle Bot image
+      - name: Build and push ${{ matrix.bot }} image
         uses: docker/build-push-action@v5
         with:
-          context: ./perp-minimal-backend/oracle-bot
+          context: ./perp-minimal-backend/${{ matrix.bot }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/oracle-bot:latest
-
-      - name: Build and push Liquidation Bot image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./perp-minimal-backend/liquidation-bot
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/liquidation-bot:latest
-
-      - name: Build and push Indexer Server image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./perp-minimal-backend/indexer-server
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/indexer-server:latest
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.bot }}:latest
