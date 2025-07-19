@@ -1,4 +1,3 @@
-// src/api.rs
 use crate::{
     config::Config,
     database::Database,
@@ -12,10 +11,10 @@ use axum::{
     routing::get,
     Router,
 };
-use ethers::{abi::Address, utils::keccak256};
+use ethers::{abi::Address, types::H256, utils::keccak256};
 use serde::Deserialize;
 use serde_json::Value;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use tower_http::cors::{Any, CorsLayer};
 
 // The shared state for our Axum handlers
@@ -77,6 +76,22 @@ async fn check_auth(headers: &HeaderMap) -> Result<[u8; 32], StatusCode> {
 pub struct PaginationParams {
     cursor: Option<usize>,
     page_size: Option<usize>,
+}
+
+// GET /positions/{positionId}
+async fn get_position_by_id(
+    State(db): AppState,
+    Path(position_id_str): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    let position_id = H256::from_str(
+        position_id_str.strip_prefix("0x").unwrap_or(&position_id_str)
+    ).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    match db.get_position_by_id(position_id.as_bytes()) {
+        Ok(Some(position_data)) => Ok(Json(serde_json::json!({ "position": position_data }))),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 // GET /positions/open
@@ -231,6 +246,7 @@ pub async fn run_api_server(config: Arc<Config>, db: Arc<Database>) -> Result<()
         .allow_methods(Any)
         .allow_headers(Any);
     let app = Router::new()
+        .route("/positions/:position_id", get(get_position_by_id))
         .route(
             "/positions/open/{address}",
             get(get_open_positions_for_address),

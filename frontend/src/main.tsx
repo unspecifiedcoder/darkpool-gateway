@@ -11,7 +11,7 @@ import { scrollSepolia } from 'viem/chains';
 // import { scrollSepolia } from './lib/chains';
 
 // 2. Set up the configuration
-const config = getDefaultConfig({
+export const config = getDefaultConfig({
   appName: 'Dark Perps',
   projectId: 'a51c54dcf4240568bf0f1c1eea6822b1', // Get one from https://cloud.walletconnect.com
   chains: [scrollSepolia],

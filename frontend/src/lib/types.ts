@@ -1,0 +1,42 @@
+// --- STATE & METADATA ---
+export interface UserCommitmentInfo {
+  value: string;
+  leaf_index: number;
+}
+
+export interface UserMetadata {
+  last_used_nullifier_nonce: number;
+  commitment_info: UserCommitmentInfo | null;
+}
+
+// --- API RESPONSE TYPES ---
+export interface ApiPosition {
+  position_id: string;
+  is_long: boolean;
+  entry_price: string;
+  margin: string;
+  size: string;
+}
+
+export interface HistoricalPosition {
+  position_id: string;
+  is_long: boolean;
+  entry_price: string;
+  margin: string;
+  size: string;
+  status: "Closed" | "Liquidated";
+  final_pnl: string;
+}
+
+export interface ApiNote {
+  note_id: string;
+  note_nonce: number;
+  value: string;
+  receiver_hash: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  has_more: boolean;
+  next_cursor: string | null;
+}

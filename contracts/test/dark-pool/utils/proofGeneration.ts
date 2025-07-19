@@ -26,10 +26,6 @@ export async function generateClaimProof(
   const noir = new Noir(ClaimCircuit as any);
   const honk = new UltraHonkBackend(ClaimCircuit.bytecode, { threads: 8 });
 
-  // generate and write verifier to file
-  // const verifier = await honk.getSolidityVerifier();
-  // fs.writeFileSync("./verifier.sol", verifier);
-  // console.log("Verifier written to file");
 
   const inputs = {
     _note_nonce: note_nonce,
@@ -70,10 +66,6 @@ export const generateWithdrawTransferProof = async (
     const noir = new Noir(WithdrawTransferCircuit as any);
     const honk = new UltraHonkBackend(WithdrawTransferCircuit.bytecode, { threads: 8 });
     
-    // // generate and write verifier to file
-    // const verifier = await honk.getSolidityVerifier();
-    // fs.writeFileSync("./verifier.sol", verifier);
-    // console.log("Verifier written to file");
     
 
     const inputs = {
@@ -93,10 +85,6 @@ export const generateWithdrawTransferProof = async (
 
     const verified = await honk.verifyProof({ proof, publicInputs }, { keccak: true });
 
-    // console.log("Proof: <Proof Gen circuit>", proof, proof.length);
-    // write proof in hex to a file
-    // fs.writeFileSync("./proof.hex", Buffer.from(proof).toString("hex"));
-    // console.log("Public Inputs: <Public Inputs>", publicInputs, publicInputs.length);
     
     return { proof, publicInputs, verified };
 }

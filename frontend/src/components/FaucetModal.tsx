@@ -10,15 +10,19 @@ import { contracts } from '@/lib/contracts';
 import { parseUnits } from 'viem';
 import { toast } from 'sonner';
 import { scrollSepolia } from 'viem/chains';
+import { useAppActions } from '@/store/useAppStore'; 
 // import { scrollSepolia } from '@/lib/chains';
 
 const FaucetModal = () => {
   const [amount, setAmount] = useState<string>('1000');
   const [isOpen, setIsOpen] = useState(false);
+  const { triggerRefetch } = useAppActions();
 
   const { data: hash, error, isPending, writeContract } = useWriteContract();
 
   const account = useAccount();
+
+
 
   const handleMint = async () => {
     const amountAsBigInt = parseUnits(amount, 18); // USDC has 18 decimals
@@ -43,6 +47,7 @@ const FaucetModal = () => {
             onClick: () => window.open(`https://sepolia.scrollscan.com/tx/${hash}`, '_blank'),
         },
       });
+      triggerRefetch();
       setIsOpen(false);
       setAmount('1000');
     }
@@ -51,7 +56,7 @@ const FaucetModal = () => {
             description: error.message,
         });
     }
-  }, [isConfirmed, error, amount, hash]);
+  }, [isConfirmed, error, amount, hash, triggerRefetch]);
 
 
   return (

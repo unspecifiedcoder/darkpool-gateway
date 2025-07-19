@@ -6,6 +6,30 @@
 All colors MUST be HSL.
 */
 
+@layer utilities {
+  /* ... existing utilities ... */
+
+  /* NEW ANIMATIONS FOR PROOF LOADER */
+  @keyframes progress-bar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(0%); }
+  }
+  
+  .animate-progress-bar {
+    animation: progress-bar linear infinite;
+  }
+  
+  @keyframes fade-in-out {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  .animate-fade-in-out {
+    animation: fade-in-out 1.5s ease-in-out infinite;
+  }
+}
+
+
 @layer base {
   :root {
     --background: 218 100% 6%;

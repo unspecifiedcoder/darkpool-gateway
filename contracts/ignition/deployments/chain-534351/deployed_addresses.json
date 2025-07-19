@@ -1,10 +1,11 @@
 {
-  "PrivacyDexModule#ClaimHonkVerifier": "0xD7CBCc3dbC2258f6Ed762c2eFE2AFC860f5E97c4",
-  "PrivacyDexModule#MockERC20": "0x736e0556C12E6608439194486101e8D32527a491",
-  "PrivacyDexModule#Oracle": "0x5642566bFdf326E4C008dA072912600939E93053",
-  "PrivacyDexModule#Poseidon2": "0xbff11f7293fBb4203751AAfec90815A318325DD7",
-  "PrivacyDexModule#WithdrawTransferHonkVerifier": "0xB690244Ad89cd45BF891B96296Fd6bBf230381De",
-  "PrivacyDexModule#ClearingHouseV2": "0x86c4D07765c947703A03386Bbe899eb2FF9E8fDa",
-  "PrivacyDexModule#TokenPool": "0x29D91c2b4c4a2A23544F1563D0b720fFF228a54b",
-  "PrivacyDexModule#PrivacyProxy": "0xF26Ee78f91FaCD768675B3b364d7F3f9787f948c"
+  "PrivacyDexModule#ClaimHonkVerifier": "0xC85DE75EDd7fF32523bdbc9e4bE2Cd7cD241D45F",
+  "PrivacyDexModule#MockERC20": "0xD22B1172dd054d0B8c7eda52Beaa15FAa89BCBd1",
+  "PrivacyDexModule#Oracle": "0xf07cc6482a24843efE7B42259ACBaF8d0a2a6952",
+  "PrivacyDexModule#Poseidon2": "0xce34eFdbCeb62Bc97cC112C86629FF4038a2Fe3f",
+  "PrivacyDexModule#WithdrawTransferHonkVerifier": "0x871c1160A1b84d7fEE9905C37A8d2156C59d435b",
+  "PrivacyDexModule#ClearingHouseV2": "0x9a314B24Ee0dCEA04B9D06484fD17C958323beA5",
+  "PrivacyDexModule#PublicFaucet": "0xC9a5D63fb19E335Af58faDbC572d4ED9877913b6",
+  "PrivacyDexModule#TokenPool": "0x742Ce86B80Ce1b5e21D2f13852272caC96BD9713",
+  "PrivacyDexModule#PrivacyProxy": "0xF8273Ab9FFCa30c1E2F188CB181885D9448E2E7b"
 }

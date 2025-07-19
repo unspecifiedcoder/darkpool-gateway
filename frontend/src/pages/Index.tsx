@@ -1,9 +1,10 @@
 import Header from '@/components/Header';
 import TradingChart from '@/components/TradingChart';
 import TradingPanel from '@/components/TradingPanel';
-import TabsSection from '@/components/TabsSection';
+import {TabsSection} from '@/components/TabsSection';
 import FaucetModal from '@/components/FaucetModal';
 import { AnimatedBackground } from "@/components/animated-background"
+import { DarkAccountPanel } from '@/components/DarkAccountPanel';
 
 
 const Index = () => {
@@ -35,6 +36,7 @@ const Index = () => {
         </div>
       </div>
       <FaucetModal />
+      <DarkAccountPanel />
     </div>
   );
 };

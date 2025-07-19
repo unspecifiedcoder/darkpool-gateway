@@ -5,77 +5,104 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { contracts } from '@/lib/contracts';
-import { parseUnits } from 'viem';
+import { parseUnits, Hex } from 'viem';
 import { toast } from 'sonner';
+import { useAppStore } from '@/store/useAppStore';
 import { scrollSepolia } from 'viem/chains';
+import { ethers } from 'ethers';
 
 type ModalProps = {
-  isOpen: boolean;
+  positionId: Hex | null; // Pass the specific position to manage
   onClose: () => void;
   onSuccess: () => void;
   type: 'add' | 'remove';
 };
 
-const ManageMarginModal = ({ isOpen, onClose, onSuccess, type }: ModalProps) => {
+export const ManageMarginModal = ({ positionId, onClose, onSuccess, type }: ModalProps) => {
   const [amount, setAmount] = useState('');
+  const { tradingMode, userClient } = useAppStore();
+  const { address } = useAccount();
 
-  const { data: hash, error, isPending, writeContract, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { data: hash, isPending, writeContract, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, error: txError } = useWaitForTransactionReceipt({ hash });
 
-  const functionName = type === 'add' ? 'addMargin' : 'removeMargin';
-
-  const account = useAccount()
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!positionId) return toast.error("No position selected.");
     const amountAsBigInt = parseUnits(amount, 18);
-    writeContract({
-      address: contracts.clearingHouse.address,
-      abi: contracts.clearingHouse.abi,
-      functionName,
-      args: [amountAsBigInt],
-      chain: scrollSepolia,
-      account: account.address
-    });
+    const toastId = toast.loading("Preparing transaction...");
+
+    if (tradingMode === 'Private') {
+      if (!userClient) return toast.error("Private client not initialized.", { id: toastId });
+      try {
+        toast.info("Please sign the message to authorize.", { id: toastId });
+        const actionString = type === 'add' ? "ADD_MARGIN" : "REMOVE_MARGIN";
+        const msgHash = ethers.solidityPackedKeccak256(["string", "bytes32"], [actionString, positionId]);
+        const signature = await userClient.secretWallet.signMessage(ethers.getBytes(msgHash));
+        
+        writeContract({
+          ...contracts.privacyProxy,
+          functionName: type === 'add' ? 'addMargin' : 'removeMargin',
+          args: [positionId, amountAsBigInt, signature],
+          chain: scrollSepolia,
+          account: address,
+        }, {
+            onSuccess: () => toast.info("Submitting private transaction...", { id: toastId }),
+            onError: (err) => toast.error("Transaction Failed", { id: toastId, description: err.message })
+        });
+      } catch (e) {
+        toast.error("Signature rejected.", { id: toastId });
+      }
+    } else { // Public Mode
+      toast.info("Please confirm in your wallet.", { id: toastId });
+      writeContract({
+        ...contracts.clearingHouse,
+        functionName: type === 'add' ? 'addMargin' : 'removeMargin',
+        args: [positionId, amountAsBigInt],
+        chain: scrollSepolia,
+        account: address,
+      }, {
+          onSuccess: () => toast.info("Submitting public transaction...", { id: toastId }),
+          onError: (err) => toast.error("Transaction Failed", { id: toastId, description: err.message })
+      });
+    }
   };
   
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isConfirmed) {
-      toast.success(`Margin ${type === 'add' ? 'added' : 'removed'} successfully!`, {
-        action: { label: 'View Tx', onClick: () => window.open(`https://sepolia.scrollscan.com/tx/${hash}`, '_blank') },
-      });
-      onSuccess();
+      toast.success(`Margin ${type}ed successfully!`);
+      timer = setTimeout(() => {
+        onSuccess();
+      }, 10000);
       reset();
       onClose();
     }
-    if (error) {
-      toast.error('Transaction Failed', { description: error.message });
+    if (txError) {
+      toast.error('Transaction Failed', { description: txError.message });
       reset();
     }
-  }, [isConfirmed, error, hash, type, onClose, onSuccess, reset]);
+    return () => clearTimeout(timer);
+  }, [isConfirmed, txError]);
 
   const title = type === 'add' ? 'Add Margin' : 'Remove Margin';
-  const description = `Increase or decrease the margin on your open position.`;
+  const description = `Modify the margin on your open position (${positionId?.slice(0, 10)}...). Mode: ${tradingMode}`;
+  const isLoading = isPending || isConfirming;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md glass-panel border-primary/30">
-        <DialogHeader>
-          <DialogTitle className="text-glow">{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
+    <Dialog open={!!positionId} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md glass-panel">
+        <DialogHeader><DialogTitle className="text-glow">{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
         <div className="py-4 space-y-2">
           <Label htmlFor="margin-amount">Amount (USDC)</Label>
-          <Input id="margin-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+          <Input id="margin-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" disabled={isLoading}/>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isPending || isConfirming}>Cancel</Button>
-          <Button type="button" variant="neon" onClick={handleSubmit} disabled={isPending || isConfirming || !amount || parseFloat(amount) <= 0}>
-            {isPending ? 'Confirm...' : isConfirming ? 'Processing...' : `Confirm ${title}`}
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
+          <Button variant="neon" onClick={handleSubmit} disabled={isLoading || !amount || parseFloat(amount) <= 0}>
+            {isLoading ? 'Processing...' : `Confirm ${title}`}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default ManageMarginModal;

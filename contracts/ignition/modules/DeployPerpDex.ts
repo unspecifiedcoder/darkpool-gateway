@@ -52,17 +52,26 @@ const PrivacyDexModule = buildModule("PrivacyDexModule", (m) => {
   const privacyProxy = m.contract("PrivacyProxy", [clearingHouse, tokenPool]);
   console.log("   - PrivacyProxy configured.");
 
+  // --- 4.5 Deploy Public Faucet ---
+  console.log("🚀 Deploying the Public Faucet...");
+  const publicFaucet = m.contract("PublicFaucet", [usdcToken]);
+  console.log("   - PublicFaucet configured.");
+
   // --- 5. CONFIGURE PERMISSIONS (POST-DEPLOYMENT) ---
   console.log("⚙️  Configuring contract roles and permissions...");
 
   const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
   const UPDATER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("UPDATER_ROLE"));
 
-  // Grant MINTER_ROLE to the ClearingHouse for settling profitable trades
+  // Grant MINTER_ROLE to the ClearingHouse for settling profitable trades and to the PublicFaucet for minting USDC
   m.call(usdcToken, "grantRole", [MINTER_ROLE, clearingHouse], {
     id: "GrantMinterToClearingHouse",
   });
   console.log("   - Granting MINTER_ROLE to ClearingHouse...");
+  m.call(usdcToken, "grantRole", [MINTER_ROLE, publicFaucet], {
+    id: "GrantMinterToPublicFaucet",
+  });
+  console.log("   - Granting MINTER_ROLE to PublicFaucet...");
 
   // Grant UPDATER_ROLE on the Oracle to the off-chain bot
   m.call(oracle, "grantRole", [UPDATER_ROLE, ORACLE_UPDATER_ADDRESS], {
@@ -80,6 +89,7 @@ const PrivacyDexModule = buildModule("PrivacyDexModule", (m) => {
     privacyProxy,
     withdrawVerifier,
     claimVerifier,
+    publicFaucet,
   };
 });
 

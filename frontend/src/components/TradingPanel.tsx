@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import CollateralModal from "./CollateralModal";
+import { CollateralModal } from "./CollateralModal";
 import {
   useAccount,
   useBalance,
@@ -13,129 +13,262 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { contracts } from "@/lib/contracts";
-import { formatUnits, parseUnits } from "viem";
-import { useOraclePrice } from "@/hooks/useOraclePrice"; // Import our new hook
+import { formatUnits, Hex, parseUnits, toHex } from "viem";
+import { useOraclePrice } from "@/hooks/useOraclePrice";
 import { toast } from "sonner";
+import { useAppActions, useAppStore } from "@/store/useAppStore";
+import { ethers } from "ethers";
 import { scrollSepolia } from "viem/chains";
+import { RefreshCw } from "lucide-react";
+import { reset } from "viem/actions";
 
-// --- Constants from our Smart Contract ---
+// --- Constants from Smart Contracts ---
 const LEVERAGE_PRECISION = 100n;
 const TAKER_FEE_BPS = 10n;
 const BPS_DIVISOR = 10000n;
 const PRICE_PRECISION = 10n ** 18n;
-const MAINTENANCE_MARGIN_RATIO_BPS = 625n;
+const MAINTENANCE_MARGIN_RATIO_BPS = 245n;
 
 const TradingPanel = () => {
-  // Local UI state
-  const [margin, setMargin] = useState<string>("1000");
+  // --- Local UI State ---
+  const [margin, setMargin] = useState<string>("100");
   const [leverage, setLeverage] = useState<number[]>([10]);
   const [tradeType, setTradeType] = useState<"long" | "short">("long");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"deposit" | "withdraw">("deposit");
 
-  // --- Wagmi Hooks for live data ---
+  // --- Global & Wagmi State ---
+  const { tradingMode, userClient, refetchSignal } = useAppStore();
+  const { triggerRefetch } = useAppActions();
   const { address, isConnected } = useAccount();
-  const { data: btcPrice, isLoading: isPriceLoading } = useOraclePrice();
+  const { data: btcPrice } = useOraclePrice();
 
-  const { data: usdcBalance, refetch: refetchUsdcBalance } = useBalance({
-    address,
-    token: contracts.usdc.address,
-    query: { refetchInterval: 10000 },
-  });
-  const { data: freeCollateral, refetch: refetchFreeCollateral } =
-    useReadContract({
-      ...contracts.clearingHouse,
-      functionName: "freeCollateral",
-      args: [address!],
-      query: { enabled: isConnected, refetchInterval: 10000 },
-    });
-  const { data: existingPosition, refetch: refetchPosition } = useReadContract({
+  // --- Transaction Hooks ---
+  const [openingPositionHash, setOpeningPositionHash] = useState<Hex | undefined>();
+  
+  // This is our main write hook that all actions will use
+  const { isPending, writeContract, reset } = useWriteContract();
+  
+  // This hook ONLY watches for the confirmation of our specific "open position" transaction
+  const { 
+    data: receipt, 
+    isLoading: isConfirming, 
+    isSuccess: isConfirmed, 
+    error: txError 
+  } = useWaitForTransactionReceipt({ hash: openingPositionHash });
+
+
+
+  // --- Data Fetching (Dynamic based on tradingMode) ---
+  const isPrivateMode = tradingMode === "Private" && !!userClient;
+
+  // Wallet Balance Hooks
+  const {
+    data: eoaUsdcBalance,
+    refetch: refetchEoaBalance,
+    isFetching: isEoaBalanceFetching,
+  } = useBalance({ address, token: contracts.usdc.address });
+  const privateUsdcBalance = userClient?.currentMetadata?.commitment_info
+    ? BigInt(userClient.currentMetadata.commitment_info.value)
+    : 0n;
+
+  // Collateral Hooks
+  const {
+    data: publicFreeCollateral,
+    refetch: refetchPublicCollateral,
+    isFetching: isPublicCollateralFetching,
+  } = useReadContract({
     ...contracts.clearingHouse,
-    functionName: "positions",
+    functionName: "freeCollateral",
     args: [address!],
-    query: { enabled: isConnected, refetchInterval: 10000 },
+    query: { enabled: isConnected && !isPrivateMode },
+  });
+  const {
+    data: privateFreeCollateral,
+    refetch: refetchPrivateCollateral,
+    isFetching: isPrivateCollateralFetching,
+  } = useReadContract({
+    ...contracts.privacyProxy,
+    functionName: "userFreeCollateral",
+    args: [userClient?.pubKey!],
+    query: { enabled: isConnected && isPrivateMode },
   });
 
-  // --- Transaction Hook ---
-  const { data: hash, isPending, writeContract } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash });
+  // --- State Selection Logic ---
+  const walletBalance = isPrivateMode
+    ? privateUsdcBalance
+    : eoaUsdcBalance?.value ?? 0n;
+  const freeCollateral = isPrivateMode
+    ? privateFreeCollateral
+    : publicFreeCollateral;
 
-  // --- Refetching Logic ---
-  const handleRefetchAll = () => {
-    refetchUsdcBalance();
-    refetchFreeCollateral();
-    refetchPosition();
-  };
+  // --- Refetching ---
+  const handleRefetchAll = useCallback(() => {
+    refetchEoaBalance();
+    if (tradingMode === "Private" && userClient) {
+      refetchPrivateCollateral();
+      userClient.fetchAndSetMetadata();
+    } else {
+      refetchPublicCollateral();
+    }
+  }, [tradingMode, userClient, refetchEoaBalance, refetchPrivateCollateral, refetchPublicCollateral]);
+  
 
   useEffect(() => {
-    if (isConfirmed) {
-      toast.success("Position opened successfully!");
+    if (refetchSignal > 0) {
       handleRefetchAll();
     }
-  }, [isConfirmed]);
+  }, [refetchSignal]);
+
+  useEffect(() => {
+    let didRun = false;
+
+    if (isConfirmed && receipt && !didRun) {
+      didRun = true;
+      console.log("CONFIRMED: Transaction receipt received. Starting post-confirmation logic.");
+      toast.success("Position opened successfully! Refreshing positions list in 5s...");
+      
+      handleRefetchAll();
+
+      const timer = setTimeout(() => {
+        console.log("TIMER: 10 seconds elapsed. Triggering global refetch via store.");
+        useAppStore.getState().actions.triggerRefetch();
+
+        console.log("CLEANUP: Resetting transaction state now.");
+        reset();
+        setOpeningPositionHash(undefined);
+
+      }, 10000);
+
+      return () => {
+        console.log("COMPONENT UNMOUNT/RE-RUN: Clearing timeout.");
+        clearTimeout(timer);
+      };
+    }
+
+    if (txError) {
+      toast.error("Open Position Failed", { description: txError.message });
+      reset();
+      setOpeningPositionHash(undefined);
+    }
+  }, [isConfirmed, txError, receipt, handleRefetchAll, reset]); 
+
+  
+
+
+  const isRefetching =
+    isEoaBalanceFetching ||
+    isPrivateCollateralFetching ||
+    isPublicCollateralFetching;
 
   // --- Derived State and Calculations ---
-  const marginAsBigInt = margin ? parseUnits(margin, 18) : 0n;
-  const leverageAsBigInt = BigInt(leverage[0]) * LEVERAGE_PRECISION;
-  const positionValue =
-    (marginAsBigInt * leverageAsBigInt) / LEVERAGE_PRECISION;
-  const tradingFee = (positionValue * TAKER_FEE_BPS) / BPS_DIVISOR;
+  const marginAsBigInt = useMemo(
+    () => (margin ? parseUnits(margin, 18) : 0n),
+    [margin]
+  );
+  const leverageAsBigInt = useMemo(
+    () => BigInt(leverage[0]) * LEVERAGE_PRECISION,
+    [leverage]
+  );
 
-  let liquidationPrice = 0n;
-  if (btcPrice && positionValue > 0n) {
-    const marginAfterFee =
-      marginAsBigInt > tradingFee ? marginAsBigInt - tradingFee : 0n;
-    // Liq Price = EntryPrice +/- (MarginAfterFee - MaintenanceMargin) / Size
-    // Simplified: Liq Price = EntryPrice * (1 +/- (InitialMarginRatio - MaintenanceMarginRatio))
-    const priceChange =
-      (btcPrice *
-        ((marginAfterFee * PRICE_PRECISION) / positionValue -
-          (MAINTENANCE_MARGIN_RATIO_BPS * PRICE_PRECISION) / BPS_DIVISOR)) /
-      PRICE_PRECISION;
-    if (tradeType === "long") {
-      liquidationPrice = btcPrice - priceChange;
-    } else {
-      liquidationPrice = btcPrice + priceChange;
+  const { positionValue, tradingFee, liquidationPrice } = useMemo(() => {
+    const posVal = (marginAsBigInt * leverageAsBigInt) / LEVERAGE_PRECISION;
+    const fee = (posVal * TAKER_FEE_BPS) / BPS_DIVISOR;
+    let liqPrice = 0n;
+
+    if (btcPrice && posVal > 0n) {
+      const marginAfterFee = marginAsBigInt > fee ? marginAsBigInt - fee : 0n;
+      // This formula calculates the price movement required to hit the maintenance margin threshold
+      const priceChangePerUnit = (marginAfterFee * PRICE_PRECISION) / posVal;
+      const maintenanceMarginPerUnit =
+        (MAINTENANCE_MARGIN_RATIO_BPS * PRICE_PRECISION) / BPS_DIVISOR;
+      const priceBuffer =
+        ((priceChangePerUnit - maintenanceMarginPerUnit) *
+          (btcPrice as bigint)) /
+        PRICE_PRECISION;
+
+      if (tradeType === "long") {
+        liqPrice = (btcPrice as bigint) - priceBuffer;
+      } else {
+        liqPrice = (btcPrice as bigint) + priceBuffer;
+      }
     }
-  }
+    return {
+      positionValue: posVal,
+      tradingFee: fee,
+      liquidationPrice: liqPrice,
+    };
+  }, [marginAsBigInt, leverageAsBigInt, btcPrice, tradeType]);
 
   // --- UI Formatting ---
-  const formatCurrency = (value: bigint | number, decimals = 18) => {
-    const valueAsBigInt = typeof value === "number" ? BigInt(value) : value;
-    const formatted = formatUnits(valueAsBigInt, decimals);
+  const formatCurrency = (value: bigint) => {
+    const formatted = formatUnits(value, 18);
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
     }).format(parseFloat(formatted));
   };
+  const formattedWalletBalance = formatCurrency(walletBalance);
+  const formattedFreeCollateral = formatCurrency(
+    (freeCollateral as bigint) ?? 0n
+  );
 
-  const formattedWalletBalance = usdcBalance
-    ? formatCurrency(usdcBalance.value)
-    : formatCurrency(0);
-  const formattedFreeCollateral = freeCollateral
-    ? formatCurrency(freeCollateral as bigint)
-    : formatCurrency(0);
-
-  // --- Button Handlers ---
+  // --- Button Handlers and Disabled Logic ---
   const handleOpenModal = (type: "deposit" | "withdraw") => {
     setModalType(type);
     setIsModalOpen(true);
   };
 
-  const handleOpenPosition = () => {
-    writeContract({
-      ...contracts.clearingHouse,
-      functionName: "openPosition",
-      args: [marginAsBigInt, leverageAsBigInt, tradeType === "long"],
-      chain: scrollSepolia,
-      account: address!,
-    });
+  const handleOpenPosition = async () => {
+    const positionId = ethers.randomBytes(32);
+    const toastId = toast.loading("Preparing transaction...");
+    console.log("Trading type: ", tradeType , tradeType === "long" , leverageAsBigInt);
+    console.log("Is private mode: ", isPrivateMode);
+
+    if (isPrivateMode) {
+      try {
+        toast.info("Please sign the message to authorize the private trade.", { id: toastId });
+        const msgHash = ethers.solidityPackedKeccak256(
+          ["string", "bytes32", "uint256", "uint256", "bool"],
+          ["OPEN_POSITION", toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long"]
+        );
+        const signature = await userClient.secretWallet.signMessage(ethers.getBytes(msgHash));
+        
+        writeContract({
+          ...contracts.privacyProxy,
+          functionName: "openPosition",
+          args: [userClient.pubKey, toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long", signature],
+          chain: scrollSepolia,
+          account: address,
+        }, {
+          onSuccess: (hash) => {
+            toast.info("Submitting private transaction...", { id: toastId });
+            setOpeningPositionHash(hash); 
+          },
+          onError: (err) => toast.error("Transaction failed", { id: toastId, description: err.message }),
+        });
+      } catch (e) {
+        toast.error("Signature rejected.", { id: toastId });
+      }
+    } else { // Public Mode
+      toast.info("Please confirm the transaction in your wallet.", { id: toastId });
+      console.log("args: ", [toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long"]);
+      writeContract({
+        ...contracts.clearingHouse,
+        functionName: "openPosition",
+        args: [toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long"],
+        chain: scrollSepolia,
+        account: address,
+      }, {
+        onSuccess: (hash) => {
+          toast.info("Submitting public transaction...", { id: toastId });
+          setOpeningPositionHash(hash); 
+        },
+        onError: (err) => toast.error("Transaction failed", { id: toastId, description: err.message }),
+      });
+    }
   };
 
-  const hasExistingPosition = existingPosition
-    ? existingPosition[0] > 0n
-    : false;
   const canAffordMargin = freeCollateral
     ? (freeCollateral as bigint) >= marginAsBigInt
     : false;
@@ -143,7 +276,6 @@ const TradingPanel = () => {
     !isConnected ||
     isPending ||
     isConfirming ||
-    hasExistingPosition ||
     !canAffordMargin ||
     marginAsBigInt <= 0n;
 
@@ -152,12 +284,26 @@ const TradingPanel = () => {
       <div className="space-y-6">
         {/* Wallet & Collateral Section */}
         <div className="glass-panel p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-glow">
-            Wallet & Collateral
-          </h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-glow">
+              {tradingMode} Account
+            </h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRefetchAll}
+              disabled={isRefetching}
+              className="text-muted-foreground hover:text-primary"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Wallet (USDC):</span>
+              <span className="text-muted-foreground">
+                {isPrivateMode ? "Private Balance:" : "Wallet (USDC):"}
+              </span>
               <span className="font-mono text-lg">
                 {formattedWalletBalance}
               </span>
@@ -189,7 +335,9 @@ const TradingPanel = () => {
 
         {/* Trading Section */}
         <div className="glass-panel p-6 space-y-6">
-          <h3 className="text-lg font-semibold text-glow">Trade Execution</h3>
+          <h3 className="text-lg font-semibold text-glow">
+            Trade Execution ({tradingMode} Mode)
+          </h3>
           <Tabs
             value={tradeType}
             onValueChange={(value) => setTradeType(value as "long" | "short")}
@@ -228,16 +376,15 @@ const TradingPanel = () => {
                 <Slider
                   value={leverage}
                   onValueChange={setLeverage}
-                  max={20}
+                  max={38}
                   min={1}
                   step={1}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>1x</span>
-                  <span>5x</span>
                   <span>10x</span>
-                  <span>15x</span>
                   <span>20x</span>
+                  <span>38x</span>
                 </div>
               </div>
               <div className="space-y-3 p-4 bg-card/10 rounded-lg">
@@ -252,9 +399,9 @@ const TradingPanel = () => {
                     Entry Price (est.):
                   </span>
                   <span className="font-mono">
-                    {isPriceLoading
-                      ? "Loading..."
-                      : formatCurrency(btcPrice || 0n)}
+                    {btcPrice
+                      ? formatCurrency(btcPrice as bigint)
+                      : "Loading..."}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -282,16 +429,11 @@ const TradingPanel = () => {
                 className="w-full"
               >
                 {isPending
-                  ? "Confirm..."
+                  ? "Confirming..."
                   : isConfirming
-                  ? "Opening..."
-                  : `Open ${tradeType === "long" ? "Long" : "Short"}`}
+                  ? "Processing..."
+                  : `Open ${tradeType} (${tradingMode})`}
               </Button>
-              {hasExistingPosition && (
-                <p className="text-center text-destructive text-sm">
-                  You already have an open position.
-                </p>
-              )}
               {!canAffordMargin && marginAsBigInt > 0n && (
                 <p className="text-center text-destructive text-sm">
                   Insufficient free collateral.

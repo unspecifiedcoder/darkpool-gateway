@@ -8,10 +8,12 @@ interface AppState {
   tradingMode: TradingMode;
   userClient: UserClient | null;
   isLoadingClient: boolean;
+  refetchSignal: number;
   actions: {
     setTradingMode: (mode: TradingMode) => void;
     initializeUserClient: (signer: ReturnType<typeof useAccount>['address'], signMessageAsync: ReturnType<typeof useSignMessage>['signMessageAsync']) => Promise<void>;
     disconnectUserClient: () => void;
+    triggerRefetch: () => void;
   };
 }
 
@@ -19,6 +21,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   tradingMode: 'Public',
   userClient: null,
   isLoadingClient: false,
+  refetchSignal: 0,
   actions: {
     setTradingMode: (mode) => {
       console.log(`Switching trading mode to: ${mode}`);
@@ -42,9 +45,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     disconnectUserClient: () => {
         console.log("Disconnecting UserClient and switching to Public mode.");
         set({ userClient: null, tradingMode: 'Public' });
+    },
+    triggerRefetch: () => {
+      console.log("Global refetch signal triggered.");
+      set({ refetchSignal: get().refetchSignal + 1 });
     }
   },
 }));
 
-// Export actions separately for easier use in components
+
 export const useAppActions = () => useAppStore((state) => state.actions);

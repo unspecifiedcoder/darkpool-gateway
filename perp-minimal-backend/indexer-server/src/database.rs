@@ -18,6 +18,13 @@ pub struct Database {
     // V2: Reverse lookup for efficiency
     // K: position_id (bytes), V: owner_pub_key (bytes)
     pub position_id_to_owner: Tree,
+    pub positions_by_id: Tree,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub enum PositionData {
+    Open(Position),
+    Historical(HistoricalPosition),
 }
 
 impl Database {
@@ -29,6 +36,7 @@ impl Database {
             unspent_notes: _db.open_tree("unspent_notes")?,
             user_metadata: _db.open_tree("user_metadata")?,
             position_id_to_owner: _db.open_tree("pos_id_to_owner")?,
+            positions_by_id: _db.open_tree("positions_by_id")?, 
             _db,
         })
     }
@@ -45,6 +53,9 @@ impl Database {
             .insert(owner_pub_key, serde_json::to_vec(&positions)?)?;
         self.position_id_to_owner
             .insert(position.position_id.clone(), owner_pub_key)?;
+        let data = PositionData::Open(position.clone());
+        self.positions_by_id.insert(position.position_id.as_bytes(), serde_json::to_vec(&data)?)?;
+
         // println!("Inserted position Id for {:#?} owner {:#?}" , position.position_id, hex::encode(owner_pub_key));
         Ok(())
     }
@@ -85,16 +96,24 @@ impl Database {
 
             let mut historical_positions =
                 self.get_historical_positions_internal(&owner_pub_key)?;
-            historical_positions.insert(0, historical_pos); // Insert at the beginning for chronological order
+            historical_positions.insert(0, historical_pos.clone()); // Insert at the beginning for chronological order
             self.historical_positions
                 .insert(&owner_pub_key, serde_json::to_vec(&historical_positions)?)?;
             self.position_id_to_owner
                 .remove(format!("0x{}", hex::encode(position_id)))?;
-
+            let data = PositionData::Historical(historical_pos);
+            self.positions_by_id.insert(position_id, serde_json::to_vec(&data)?)?;
             // println!("Removed position {:#?}" , position_id);
         }
 
         Ok(())
+    }
+
+    pub fn get_position_by_id(&self, position_id: &[u8]) -> Result<Option<PositionData>> {
+        match self.positions_by_id.get(position_id)? {
+            Some(data) => Ok(Some(serde_json::from_slice(&data)?)),
+            None => Ok(None),
+        }
     }
 
     pub fn get_open_positions(&self, owner_pub_key: &[u8]) -> Result<Vec<Position>> {

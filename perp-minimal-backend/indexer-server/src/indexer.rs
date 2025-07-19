@@ -286,10 +286,8 @@ async fn handle_note_created(
 
     let note_id = ethers::utils::keccak256(&encoded_data);
     println!(
-        "[Indexer] NoteCreated: Note ID 0x{} with encoded data {:#?} where nonce is {}",
-        hex::encode(note_id),
-        hex::encode(encoded_data),
-        log.note_nonce
+        "[Indexer] NoteCreated: Note ID 0x{}",
+        hex::encode(note_id)
     );
     let unspent_note = UnspentNote {
         note_id: format!("0x{}", hex::encode(note_id)),
@@ -299,7 +297,7 @@ async fn handle_note_created(
             value: log.amount.to_string(),
         },
     };
-    println!("Note added {}", hex::encode(note_id));
+    // println!("Note added {}", hex::encode(note_id));
     db.add_unspent_note(&unspent_note).map_err(|e| {
         eprintln!("[Indexer ERROR] Failed to add unspent note: {}", e);
         e
