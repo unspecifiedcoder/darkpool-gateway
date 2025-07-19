@@ -28,6 +28,7 @@ const itemVariants = {
 };
 
 export const PositionCard: React.FC<PositionCardProps> = ({ position, onRefresh }) => {
+  console.log("positionnn", position);
   const [isCopied, copy] = useCopyToClipboard();
 
   const handleCopy = () => {

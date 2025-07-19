@@ -3,12 +3,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase")] 
 pub enum PositionStatus {
-    Open,
+    Open, 
     Closed,
     Liquidated,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Position {
     pub position_id: String,

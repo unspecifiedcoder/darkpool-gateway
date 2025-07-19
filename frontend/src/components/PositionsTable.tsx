@@ -296,6 +296,7 @@ export const PositionsTable = () => {
                       <td className="p-2 font-mono flex items-center gap-2">
                         <Link
                           to={`/explorer?positionId=${positionId}`}
+                          target="_blank"
                           className="hover:text-primary transition-colors"
                         >
                           {`${positionId.slice(0, 8)}...${positionId.slice(

@@ -49,13 +49,16 @@ const ExplorerPage: React.FC = () => {
     
     try {
       const response = await apiService.getPositionById(id);
+      console.log("respppp" ,response);
       if (response && response.position) {
+        console.log("positionnn res", response.position);
         setPosition(response.position);
         setAppState(response.position.status === 'Open' ? 'FOUND_OPEN' : 'FOUND_HISTORICAL');
       } else {
         setAppState('NOT_FOUND');
       }
     } catch (error: any) {
+      console.log("respppperr", error);
       if (error.response && error.response.status === 404) {
         setAppState('NOT_FOUND');
       } else {

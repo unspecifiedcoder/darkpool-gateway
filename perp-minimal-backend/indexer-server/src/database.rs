@@ -22,6 +22,7 @@ pub struct Database {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(tag = "status", content = "data")] 
 pub enum PositionData {
     Open(Position),
     Historical(HistoricalPosition),
@@ -56,6 +57,7 @@ impl Database {
         let data = PositionData::Open(position.clone());
         self.positions_by_id.insert(position.position_id.as_bytes(), serde_json::to_vec(&data)?)?;
 
+        println!("positions_by_id insert {}" , position.position_id);
         // println!("Inserted position Id for {:#?} owner {:#?}" , position.position_id, hex::encode(owner_pub_key));
         Ok(())
     }
@@ -115,7 +117,8 @@ impl Database {
     }
 
     pub fn get_position_by_id(&self, position_id: &[u8]) -> Result<Option<PositionData>> {
-        match self.positions_by_id.get(position_id)? {
+        println!("get position_id {}", hex::encode(position_id));
+        match self.positions_by_id.get(format!("0x{}", hex::encode(position_id)).as_bytes())? {
             Some(data) => Ok(Some(serde_json::from_slice(&data)?)),
             None => Ok(None),
         }
