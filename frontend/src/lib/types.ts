@@ -64,3 +64,8 @@ export interface HistoricalPosition extends BasePositionData {
 export type Position =
   | { status: 'Open'; data: OpenPosition }
   | { status: 'Closed' | 'Liquidated'; data: HistoricalPosition };
+
+export interface PositionApiResponse {
+  position: Position; // The union type you already defined
+}
+  

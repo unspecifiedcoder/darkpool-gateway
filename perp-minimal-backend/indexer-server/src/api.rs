@@ -246,7 +246,7 @@ pub async fn run_api_server(config: Arc<Config>, db: Arc<Database>) -> Result<()
         .allow_methods(Any)
         .allow_headers(Any);
     let app = Router::new()
-        .route("/positions/:position_id", get(get_position_by_id))
+        .route("/positions/{position_id}", get(get_position_by_id))
         .route(
             "/positions/open/{address}",
             get(get_open_positions_for_address),

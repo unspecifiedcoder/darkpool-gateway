@@ -17,6 +17,7 @@ import { apiService } from "@/services/apiService";
 import { Copy, RefreshCw } from "lucide-react";
 import { ethers } from "ethers";
 import { scrollSepolia } from "viem/chains";
+import { Link } from "react-router-dom";
 
 // --- Constants ---
 const PRICE_PRECISION = 10n ** 18n;
@@ -252,7 +253,6 @@ export const PositionsTable = () => {
               </thead>
               <tbody>
                 {positionsData?.map((positionResult, index) => {
-                  
                   if (!positionResult || positionResult.status !== "success")
                     return null;
 
@@ -294,7 +294,14 @@ export const PositionsTable = () => {
                   return (
                     <tr key={positionId} className="border-b border-border/50">
                       <td className="p-2 font-mono flex items-center gap-2">
-                        {`${positionId.slice(0, 8)}...${positionId.slice(-6)}`}
+                        <Link
+                          to={`/explorer?positionId=${positionId}`}
+                          className="hover:text-primary transition-colors"
+                        >
+                          {`${positionId.slice(0, 8)}...${positionId.slice(
+                            -6
+                          )}`}
+                        </Link>
                         <Copy
                           className="w-3 h-3 cursor-pointer"
                           onClick={() => copyToClipboard(positionId)}

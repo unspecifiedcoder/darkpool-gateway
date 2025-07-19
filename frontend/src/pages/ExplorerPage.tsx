@@ -4,6 +4,14 @@ import { AppState, Position } from '@/lib/types';
 import { SearchBar } from '@/components/explorer/SearchBar';
 import { PositionCard } from '@/components/explorer/PositionCard';
 import CosmicBackground from '@/components/explorer/CosmicBackground';
+import { apiService } from '@/services/apiService';
+import { toast } from 'sonner';
+import { useReadContracts } from 'wagmi';
+import { contracts } from '@/lib/contracts';
+import { Hex } from 'viem';
+import { useOraclePrice } from '@/hooks/useOraclePrice';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 
 const ExplorerPage: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('IDLE');
@@ -11,6 +19,72 @@ const ExplorerPage: React.FC = () => {
   const [positionId, setPositionId] = useState<string>('');
   const [showIntro, setShowIntro] = useState(true);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const positionIdFromUrl = searchParams.get('positionId');
+
+  const { data: btcPrice } = useOraclePrice();
+  const { data: pnlData } = useReadContracts({
+    //@ts-ignore
+    contracts: position?.status === 'Open' ? [{
+      ...contracts.clearingHouse,
+      functionName: 'calculatePnl',
+      args: [position.data.position_id as Hex],
+    }] : [],
+    query: { 
+      enabled: position?.status === 'Open',
+      refetchInterval: 15000, // Refetch PnL every 15 seconds
+    }
+  });
+
+  const fetchData = useCallback(async (id: string) => {
+    if (!id || !id.startsWith('0x')) {
+      setAppState('IDLE');
+      return;
+    }
+    
+    setAppState('LOADING');
+    setPosition(null);
+    
+    try {
+      const response = await apiService.getPositionById(id);
+      if (response && response.position) {
+        setPosition(response.position);
+        setAppState(response.position.status === 'Open' ? 'FOUND_OPEN' : 'FOUND_HISTORICAL');
+      } else {
+        setAppState('NOT_FOUND');
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        setAppState('NOT_FOUND');
+      } else {
+        toast.error("Error fetching position data.");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (positionIdFromUrl) {
+      fetchData(positionIdFromUrl);
+    }
+  }, [positionIdFromUrl, fetchData]);
+
+  useEffect(() => {
+    if (position?.status === 'Open' && pnlData?.[0]?.result) {
+      const livePnl = pnlData[0].result[0];
+      setPosition(prevPos => {
+        if (prevPos && prevPos.status === 'Open') {
+          return { ...prevPos, data: { ...prevPos.data, pnl: livePnl.toString() }};
+        }
+        return prevPos;
+      });
+    }
+  }, [pnlData]);
+
+
+
+
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -29,36 +103,35 @@ const ExplorerPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   
-  const fetchData = useCallback(async (id: string) => {
-    setAppState('LOADING');
-    setPosition(null);
+  // const fetchData = useCallback(async (id: string) => {
+  //   setAppState('LOADING');
+  //   setPosition(null);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  //   // Simulate API call delay
+  //   await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (id.toLowerCase().includes('0x123')) {
-      setPosition(openPosition);
-      setAppState('FOUND_OPEN');
-    } else if (id.toLowerCase().includes('0x456')) {
-      setPosition(historicalPosition);
-      setAppState('FOUND_HISTORICAL');
-    } else if (id.toLowerCase().includes('0x789')) {
-      setPosition(liquidatedPosition);
-      setAppState('FOUND_HISTORICAL');
-    } else {
-      setAppState('NOT_FOUND');
-    }
-  }, []);
+  //   if (id.toLowerCase().includes('0x123')) {
+  //     setPosition(openPosition);
+  //     setAppState('FOUND_OPEN');
+  //   } else if (id.toLowerCase().includes('0x456')) {
+  //     setPosition(historicalPosition);
+  //     setAppState('FOUND_HISTORICAL');
+  //   } else if (id.toLowerCase().includes('0x789')) {
+  //     setPosition(liquidatedPosition);
+  //     setAppState('FOUND_HISTORICAL');
+  //   } else {
+  //     setAppState('NOT_FOUND');
+  //   }
+  // }, []);
 
   const handleSearch = (id: string) => {
-    setPositionId(id);
-    fetchData(id);
+    navigate(`/explorer?positionId=${id}`); 
   };
   
   const handleReset = () => {
+    navigate('/explorer');
     setAppState('IDLE');
     setPosition(null);
-    setPositionId('');
   }
 
   const isSearching = appState === 'LOADING';
@@ -160,7 +233,7 @@ const ExplorerPage: React.FC = () => {
               animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut', delay: 0.2 } }}
               exit={{ opacity: 0, y: 50, transition: { duration: 0.3 } }}
             >
-              <PositionCard position={position} onRefresh={() => fetchData(positionId)} />
+              <PositionCard position={position} onRefresh={() => fetchData(position.data.position_id)} />
             </motion.div>
           )}
         </AnimatePresence>

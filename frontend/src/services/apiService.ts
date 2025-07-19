@@ -1,4 +1,4 @@
-import { ApiNote, ApiPosition, HistoricalPosition, PaginatedResponse } from '@/lib/types';
+import { ApiNote, ApiPosition, HistoricalPosition, PaginatedResponse, PositionApiResponse } from '@/lib/types';
 import axios from 'axios';
 
 const INDEXER_API_URL = import.meta.env.VITE_INDEXER_API_URL || "https://indexer-server-production-b55a.up.railway.app";
@@ -19,6 +19,11 @@ export const apiService = {
     await apiClient.post('/private/metadata', encryptedBlob, { 
       headers: { ...authHeaders, 'Content-Type': 'text/plain' }
     });
+  },
+
+  getPositionById: async (positionId: string) => {
+    const { data } = await apiClient.get<PositionApiResponse>(`/positions/${positionId}`);
+    return data;
   },
 
   // --- Public Position Endpoints ---
