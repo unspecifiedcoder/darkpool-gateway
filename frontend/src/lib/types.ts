@@ -40,3 +40,27 @@ export interface PaginatedResponse<T> {
   has_more: boolean;
   next_cursor: string | null;
 }
+
+
+export type AppState = 'IDLE' | 'LOADING' | 'FOUND_OPEN' | 'FOUND_HISTORICAL' | 'NOT_FOUND';
+
+export interface BasePositionData {
+  position_id: string;
+  is_long: boolean;
+  size: string;
+  margin: string;
+  entry_price: string;
+}
+
+export interface OpenPosition extends BasePositionData {
+  pnl: string;
+  liquidation_price: string;
+}
+
+export interface HistoricalPosition extends BasePositionData {
+  final_pnl: string;
+}
+
+export type Position =
+  | { status: 'Open'; data: OpenPosition }
+  | { status: 'Closed' | 'Liquidated'; data: HistoricalPosition };

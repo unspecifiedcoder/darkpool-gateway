@@ -24,6 +24,7 @@ pub struct HistoricalPosition {
     pub position: Position,
     pub status: PositionStatus,
     pub final_pnl: String, // i256 as string
+    pub owner_address: String,
 }
 
 // --- Note Models ---

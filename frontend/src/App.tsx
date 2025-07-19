@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useAppActions } from "./store/useAppStore";
+import ExplorerPage from "./pages/ExplorerPage";
 
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/explorer" element={<ExplorerPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

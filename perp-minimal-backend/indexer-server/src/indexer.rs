@@ -241,7 +241,7 @@ fn handle_position_closed(
         hex::encode(log.position_id)
     );
     let pnl_str = log.pnl.to_string();
-    db.move_to_historical(&log.position_id, PositionStatus::Closed, pnl_str)
+    db.move_to_historical(&log.position_id, PositionStatus::Closed, pnl_str, log.user.to_string())
         .map_err(|e| {
             eprintln!("[Indexer ERROR] Failed to move position (closed): {}", e);
             e
@@ -259,7 +259,7 @@ fn handle_position_liquidated(
         hex::encode(log.position_id)
     );
     let pnl_str = "Liquidated".to_string();
-    db.move_to_historical(&log.position_id, PositionStatus::Liquidated, pnl_str)
+    db.move_to_historical(&log.position_id, PositionStatus::Liquidated, pnl_str, log.user.to_string())
         .map_err(|e| {
             eprintln!(
                 "[Indexer ERROR] Failed to move position (liquidated): {}",

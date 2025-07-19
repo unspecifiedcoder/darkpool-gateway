@@ -65,6 +65,7 @@ impl Database {
         position_id: &[u8],
         status: PositionStatus,
         final_pnl: String,
+        owner_address: String, 
     ) -> Result<()> {
         // println!("Moving to historical records {:#?}" , format!("0x{}" , hex::encode(position_id)));
         let owner_pub_key = match self
@@ -92,6 +93,7 @@ impl Database {
                 position: position_to_move,
                 status,
                 final_pnl,
+                owner_address
             };
 
             let mut historical_positions =
@@ -99,10 +101,13 @@ impl Database {
             historical_positions.insert(0, historical_pos.clone()); // Insert at the beginning for chronological order
             self.historical_positions
                 .insert(&owner_pub_key, serde_json::to_vec(&historical_positions)?)?;
+
             self.position_id_to_owner
                 .remove(format!("0x{}", hex::encode(position_id)))?;
             let data = PositionData::Historical(historical_pos);
             self.positions_by_id.insert(position_id, serde_json::to_vec(&data)?)?;
+
+            // self.position_id_to_owner.remove()
             // println!("Removed position {:#?}" , position_id);
         }
 
