@@ -107,7 +107,7 @@ impl Database {
             self.position_id_to_owner
                 .remove(format!("0x{}", hex::encode(position_id)))?;
             let data = PositionData::Historical(historical_pos);
-            self.positions_by_id.insert(position_id, serde_json::to_vec(&data)?)?;
+            self.positions_by_id.insert(format!("0x{}", hex::encode(position_id)).as_bytes(), serde_json::to_vec(&data)?)?;
 
             // self.position_id_to_owner.remove()
             // println!("Removed position {:#?}" , position_id);

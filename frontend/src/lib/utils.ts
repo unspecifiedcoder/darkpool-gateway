@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { formatUnits } from "viem";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -46,6 +47,13 @@ export const formatCurrency = (value: string, contractDecimals: number = 18): st
     return "$0.00";
   }
 };
+
+export const formatCurrency_ = (value: bigint) =>
+  `$${parseFloat(formatUnits(value, 18)).toLocaleString(
+    "en-US",
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+  )}`;
+
 
 // Formats an asset value (like BTC) with appropriate decimal places.
 export const formatAsset = (value: string, contractDecimals: number = 18, displayDecimals: number = 4): string => {

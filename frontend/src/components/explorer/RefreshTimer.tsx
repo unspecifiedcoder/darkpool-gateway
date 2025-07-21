@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-const REFRESH_INTERVAL_MS = 15000; // 15 seconds
+const REFRESH_INTERVAL_MS = 40000; // 40 seconds
 
 export const RefreshTimer = ({ onRefresh }: { onRefresh: () => void }) => {
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL_MS / 1000);

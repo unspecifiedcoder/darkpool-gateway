@@ -5,7 +5,7 @@ import { Copy, Check } from 'lucide-react';
 import { RefreshTimer } from './RefreshTimer';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { Position } from '@/lib/types';
-import { formatAsset, formatCurrency, formatPnl, shortenId } from '@/lib/utils';
+import { formatAsset, formatCurrency, formatCurrency_, formatPnl, shortenId } from '@/lib/utils';
 
 interface PositionCardProps {
   position: Position;
@@ -70,9 +70,9 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onRefresh 
         
         <DataItem label="Size" value={`${formatAsset(position.data.size)} BTC`} />
         
-        <DataItem label="Margin" value={`${formatCurrency(position.data.margin, 6)} USDC`} />
+        <DataItem label="Margin" value={`${formatCurrency(position.data.margin, 18)} USDC`} />
 
-        <DataItem label="Entry Price" value={formatCurrency(position.data.entry_price, 8)} />
+        <DataItem label="Entry Price" value={formatCurrency_(BigInt(position.data.entry_price))} />
         
         { 'pnl' in position.data &&
             <DataItem label="Current PnL">

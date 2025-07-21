@@ -24,6 +24,7 @@ export const apiService = {
 
   getPositionById: async (positionId: string) => {
     const { data } = await apiClient.get<PositionApiResponse>(`/positions/${positionId}`);
+    console.log("position requested", data);
     return data;
   },
 
