@@ -51,21 +51,26 @@ export interface BasePositionData {
   margin: string;
   entry_price: string;
 }
-
 export interface OpenPosition extends BasePositionData {
   pnl: string;
   liquidation_price: string;
 }
 
-export interface HistoricalPosition extends BasePositionData {
+export interface HistoricalPositionData extends BasePositionData {
+  status: 'Closed' | 'Liquidated';
   final_pnl: string;
+  owner_address: string; // The owner at the time it was closed
 }
+
 
 export type Position =
-  | { status: 'Open'; data: OpenPosition }
-  | { status: 'Closed' | 'Liquidated'; data: HistoricalPosition };
+  | { status: 'Open'; data: BasePositionData }
+  | { status: 'Historical'; data: HistoricalPositionData };
+
 
 export interface PositionApiResponse {
-  position: Position; // The union type you already defined
+  position: 
+  | { status: 'Open'; data: BasePositionData }
+  | { status: 'Historical'; data: HistoricalPositionData };
 }
-  
+

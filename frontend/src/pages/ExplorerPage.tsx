@@ -24,20 +24,7 @@ const ExplorerPage: React.FC = () => {
   const navigate = useNavigate();
   const positionIdFromUrl = searchParams.get('positionId');
 
-  const { data: btcPrice } = useOraclePrice();
-  const { data: pnlData } = useReadContracts({
-    //@ts-ignore
-    contracts: position?.status === 'Open' ? [{
-      ...contracts.clearingHouse,
-      functionName: 'calculatePnl',
-      args: [position.data.position_id as Hex],
-    }] : [],
-    query: { 
-      enabled: position?.status === 'Open',
-      refetchInterval: 15000, // Refetch PnL every 15 seconds
-    }
-  });
-
+ 
   const fetchData = useCallback(async (id: string) => {
     if (!id || !id.startsWith('0x')) {
       setAppState('IDLE');
@@ -72,19 +59,6 @@ const ExplorerPage: React.FC = () => {
       fetchData(positionIdFromUrl);
     }
   }, [positionIdFromUrl, fetchData]);
-
-  useEffect(() => {
-    if (position?.status === 'Open' && pnlData?.[0]?.result) {
-      const livePnl = pnlData[0].result[0];
-      setPosition(prevPos => {
-        if (prevPos && prevPos.status === 'Open') {
-          return { ...prevPos, data: { ...prevPos.data, pnl: livePnl.toString() }};
-        }
-        return prevPos;
-      });
-    }
-  }, [pnlData]);
-
 
 
 
@@ -250,42 +224,3 @@ const ExplorerPage: React.FC = () => {
 
 export default ExplorerPage;
 
-// Mock Data
-export const openPosition: Position = {
-  status: "Open",
-  data: {
-    position_id: "0x123abcde1234567890abcdef1234567890abcdef1234567890abcdef12345",
-    is_long: true,
-    size: "1500000000000000000", // 1.5 BTC
-    margin: "2000000000000000000000", // 2000 USDC
-    entry_price: "65000000000000000000000", // $65,000
-    pnl: "125000000000000000000", // +125 USDC
-    liquidation_price: "58000000000000000000000", // $58,000
-  }
-};
-
-export const historicalPosition: Position = {
-  status: "Closed",
-  data: {
-    position_id: "0x456defab4567890123cdefab4567890123cdefab4567890123cdefab4567",
-    is_long: false,
-    size: "500000000000000000", // 0.5 BTC
-    margin: "1000000000000000000000", // 1000 USDC
-    entry_price: "68000000000000000000000", // $68,000
-    final_pnl: "-250000000000000000000", // -250 USDC
-    status: 'Closed'
-  }
-};
-
-export const liquidatedPosition: Position = {
-  status: "Liquidated",
-  data: {
-    position_id: "0x789abacaba789012345defdef789012345defdef789012345defdef78901",
-    is_long: true,
-    size: "2000000000000000000", // 2.0 ETH
-    margin: "500000000000000000000", // 500 USDC
-    entry_price: "3500000000000000000000", // $3,500
-    final_pnl: "-500000000000000000000", // -500 USDC
-    status: 'Liquidated'
-  }
-};

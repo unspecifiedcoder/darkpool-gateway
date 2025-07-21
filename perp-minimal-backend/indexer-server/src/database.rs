@@ -117,7 +117,7 @@ impl Database {
     }
 
     pub fn get_position_by_id(&self, position_id: &[u8]) -> Result<Option<PositionData>> {
-        println!("get position_id {}", hex::encode(position_id));
+        // println!("get position_id {}", hex::encode(position_id));
         match self.positions_by_id.get(format!("0x{}", hex::encode(position_id)).as_bytes())? {
             Some(data) => Ok(Some(serde_json::from_slice(&data)?)),
             None => Ok(None),

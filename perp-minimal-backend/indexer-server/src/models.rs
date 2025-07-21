@@ -13,9 +13,9 @@ pub enum PositionStatus {
 pub struct Position {
     pub position_id: String,
     pub is_long: bool,
-    pub entry_price: String, // U256 as string
-    pub margin: String,      // U256 as string
-    pub size: String,        // U256 as string
+    pub entry_price: String, 
+    pub margin: String,      
+    pub size: String,        
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct HistoricalPosition {
 pub struct Note {
     pub note_nonce: u64,
     pub receiver_hash: String,
-    pub value: String, // U256 as string
+    pub value: String, 
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
