@@ -55,7 +55,9 @@ export const PositionCard: React.FC<PositionCardProps> = ({ position, onRefresh 
   // --- Data Unification & Calculation ---
   const pnl = position.status === 'Open' ? (pnlData?.[0]?.result?.[0] ?? 0n) : BigInt((position.data as HistoricalPositionData).final_pnl);
   const owner_address = position.status === 'Open' ? onChainPositionData?.[0] : (position.data as HistoricalPositionData).owner_address;
-  const isPrivate = owner_address?.toLowerCase() === contracts.privacyProxy.address.toLowerCase();
+
+  // match only first 5 characters of owner address
+  const isPrivate = owner_address?.toLowerCase().slice(0, 5) === contracts.privacyProxy.address.toLowerCase().slice(0, 5);
   
   const positionValue = (BigInt(position.data.size) * BigInt(position.data.entry_price)) / PRICE_PRECISION;
   const leverage = BigInt(position.data.margin) > 0 ? Number(positionValue * 100n / BigInt(position.data.margin)) / 100 : 0;
