@@ -1,7 +1,7 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Button } from '@/components/ui/button';
 import { Wallet } from 'lucide-react';
-import { scrollSepolia } from '@/lib/chains';
+import { AppChain } from '@/lib/contracts';
 
 export const CustomConnectButton = () => {
   return (
@@ -30,7 +30,7 @@ export const CustomConnectButton = () => {
                 );
               }
 
-              if (chain.id !== scrollSepolia.id) {
+              if (chain.id !== AppChain.id) {
                 return (
                   <Button onClick={openChainModal} variant="destructive" className="gap-2">
                     Wrong Network

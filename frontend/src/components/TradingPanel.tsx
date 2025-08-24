@@ -12,15 +12,13 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { contracts } from "@/lib/contracts";
+import { AppChain, contracts } from "@/lib/contracts";
 import { formatUnits, Hex, parseUnits, toHex } from "viem";
 import { useOraclePrice } from "@/hooks/useOraclePrice";
 import { toast } from "sonner";
 import { useAppActions, useAppStore } from "@/store/useAppStore";
 import { ethers } from "ethers";
-import { scrollSepolia } from "viem/chains";
 import { RefreshCw } from "lucide-react";
-import { reset } from "viem/actions";
 
 // --- Constants from Smart Contracts ---
 const LEVERAGE_PRECISION = 100n;
@@ -238,7 +236,7 @@ const TradingPanel = () => {
           ...contracts.privacyProxy,
           functionName: "openPosition",
           args: [userClient.pubKey, toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long", signature],
-          chain: scrollSepolia,
+          chain: AppChain,
           account: address,
         }, {
           onSuccess: (hash) => {
@@ -257,7 +255,7 @@ const TradingPanel = () => {
         ...contracts.clearingHouse,
         functionName: "openPosition",
         args: [toHex(positionId), marginAsBigInt, leverageAsBigInt, tradeType === "long"],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: address,
       }, {
         onSuccess: (hash) => {

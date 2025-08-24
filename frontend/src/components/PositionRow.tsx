@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { ApiPosition } from "@/lib/types";
 import { Copy, Plus, Minus } from "lucide-react";
 import { ethers } from "ethers";
-import { scrollSepolia } from "viem/chains";
 
 // --- Constants ---
 const PRICE_PRECISION = 10n ** 18n;
@@ -65,7 +64,7 @@ export const PositionRow = ({
             ...contracts.privacyProxy,
             functionName: "closePosition",
             args: [position.position_id, signature],
-            chain: scrollSepolia,
+            chain: AppChain,
             account: address,
           },
           {
@@ -90,7 +89,7 @@ export const PositionRow = ({
           ...contracts.clearingHouse,
           functionName: "closePosition",
           args: [position.position_id],
-          chain: scrollSepolia,
+          chain: AppChain,
           account: address,
         },
         {

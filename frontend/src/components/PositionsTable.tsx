@@ -8,7 +8,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { contracts } from "@/lib/contracts";
+import { AppChain, contracts } from "@/lib/contracts";
 import { useOraclePrice } from "@/hooks/useOraclePrice";
 import { formatUnits, Hex } from "viem";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import { useAppStore, useAppActions } from "@/store/useAppStore";
 import { apiService } from "@/services/apiService";
 import { Copy, RefreshCw } from "lucide-react";
 import { ethers } from "ethers";
-import { scrollSepolia } from "viem/chains";
 import { Link } from "react-router-dom";
 
 // --- Constants ---
@@ -171,7 +170,7 @@ export const PositionsTable = () => {
           ...contracts.privacyProxy,
           functionName: "closePosition",
           args: [positionId, signature],
-          chain: scrollSepolia,
+          chain: AppChain,
           account: address,
         });
       } catch (e) {
@@ -186,7 +185,7 @@ export const PositionsTable = () => {
           ...contracts.clearingHouse,
           functionName: "closePosition",
           args: [positionId],
-          chain: scrollSepolia,
+          chain: AppChain,
           account: address,
         },
         {

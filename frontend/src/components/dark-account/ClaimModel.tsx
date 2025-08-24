@@ -12,7 +12,6 @@ import { ethers } from "ethers";
 import { ApiNote } from "@/lib/types";
 import { ProofGenerationLoader } from "../ProofGenerationLoader";
 import { generateClaimProof } from "@/lib/proof";
-import { scrollSepolia } from "viem/chains";
 
 type ModalProps = {
   noteToClaim: ApiNote | null; 
@@ -79,7 +78,7 @@ export const ClaimModal = ({ noteToClaim, onClose }: ModalProps) => {
         ...contracts.tokenPool,
         functionName: 'claim',
         args: [{ honkProof: toHex(proof), publicInputs }],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: userClient.signerAddress,
       }, {
         onSuccess: () => {

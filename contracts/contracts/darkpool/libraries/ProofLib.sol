@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 library ProofLib {
     struct WithdrawOrTransferParams {
         bytes honkProof;
-        bytes32[] publicInputs; // [value, merkle_root, leaf_index, nullifier, new_commitment]
+        bytes32[] publicInputs; 
     }
 
     function value(
@@ -34,7 +34,7 @@ library ProofLib {
 
     struct ClaimParams {
         bytes honkProof;
-        bytes32[] publicInputs; // [value, note_nonce, receiver_secretHash, option, merkle_root, option, leaf_index, option, existingNullifier, option, new_commitment]
+        bytes32[] publicInputs; 
     }
 
     function has_prev_commitments(ClaimParams memory params) internal pure returns (bool) {

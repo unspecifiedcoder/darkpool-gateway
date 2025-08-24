@@ -5,8 +5,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";  
 import { useAppStore, useAppActions, TradingMode } from "@/store/useAppStore";
 import { useAccount, useSignMessage, useChainId, useSwitchChain } from "wagmi"; 
-import { scrollSepolia } from "@/lib/chains"; 
 import { AlertTriangle } from "lucide-react"; 
+import { AppChain } from "@/lib/contracts";
 
 const Header = () => {
   const { tradingMode, isLoadingClient } = useAppStore();
@@ -16,7 +16,7 @@ const Header = () => {
   const { signMessageAsync } = useSignMessage();
   const chainId = useChainId(); 
   const { switchChain } = useSwitchChain(); 
-  const isOnWrongNetwork = isConnected && chainId !== scrollSepolia.id;
+  const isOnWrongNetwork = isConnected && chainId !== AppChain.id;
 
   const handleModeChange = (isPrivate: boolean) => {
     const newMode: TradingMode = isPrivate ? "Private" : "Public";
@@ -38,7 +38,7 @@ const Header = () => {
           </div>
         </div>
         <div className="text-xs text-muted-foreground bg-accent/20 px-2 py-1 rounded-md border border-accent/30">
-          SCROLL SEPOLIA
+          OP BNB
         </div>
       </div>
 
@@ -48,11 +48,11 @@ const Header = () => {
         ) : isOnWrongNetwork ? (
           <Button
             variant="destructive"
-            onClick={() => switchChain({ chainId: scrollSepolia.id })}
+            onClick={() => switchChain({ chainId: AppChain.id })}
             className="gap-2"
           >
             <AlertTriangle className="w-4 h-4" />
-            Switch to Scroll Sepolia
+            Switch to OP BNB
           </Button>
         ) : (
           <div className="flex items-center gap-4">

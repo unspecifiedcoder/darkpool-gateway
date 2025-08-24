@@ -12,7 +12,6 @@ import { contracts } from "@/lib/contracts";
 import { parseUnits, Hex } from "viem";
 import { ethers } from "ethers";
 import { generateWithdrawTransferProof } from "@/lib/proof";
-import { scrollSepolia } from "viem/chains";
 
 export const TransferModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [amount, setAmount] = useState('');
@@ -69,7 +68,7 @@ export const TransferModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
         ...contracts.tokenPool,
         functionName: 'transfer',
         args: [ { honkProof: proof, publicInputs }, receiverHash ],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: userClient.signerAddress!,
       });
 

@@ -14,10 +14,10 @@ if (!process.env.OPTIMISM_ETHERSCAN_API_KEY) {
 }
 
 // hardhat 18th
-const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0x9c3ca01a839e49b08fb9e53ad1ff36b7d7c0c6e421354cc222f6ddac5cfe9e53";
 const optimismEtherscanApiKey = process.env.OPTIMISM_ETHERSCAN_API_KEY || "";
 const scrollSepoliaEtherscanApiKey = process.env.SCROLL_SEPOLIA_ETHERSCAN_API_KEY || "";
-// console.log(optimismEtherscanApiKey);
+console.log(optimismEtherscanApiKey , scrollSepoliaEtherscanApiKey);
 const config: HardhatUserConfig = {
   sourcify: {
     enabled: false,
@@ -41,6 +41,11 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
       // accounts: [deployerPrivateKey, "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" , "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" , ],
     },
+    opBNB: {
+      url: "https://opbnb-testnet-rpc.bnbchain.org",
+      accounts: [deployerPrivateKey],
+      chainId: 5611,
+    },
     scrollSepolia: {
       url: "https://scroll-sepolia.infura.io/v3/172bf686e1194d75b77619beb0d3e698",
       accounts: [deployerPrivateKey],
@@ -50,6 +55,11 @@ const config: HardhatUserConfig = {
       url: "https://sepolia.optimism.io",
       accounts: [deployerPrivateKey],
       chainId: 11155420, // Chain ID for Optimism Sepolia
+    },
+    avalancheFuji: {
+      url: "https://avalanche-fuji.infura.io/v3/172bf686e1194d75b77619beb0d3e698",
+      accounts: [deployerPrivateKey],
+      chainId: 43113,
     },
     hardhat: { // Default local network
 
@@ -99,6 +109,8 @@ const config: HardhatUserConfig = {
     apiKey: {
       optimismSepolia: optimismEtherscanApiKey,
       scrollSepolia: scrollSepoliaEtherscanApiKey,
+      opBNB: "6bb50c7641a7425ca2c83fbf8bb56219",
+      avalancheFuji: "snowtrace",
     },
     customChains: [
       {
@@ -121,6 +133,24 @@ const config: HardhatUserConfig = {
           browserURL: "https://sepolia.scrollscan.com/",
         },
       },
+      {
+        network: "opBNB",
+        chainId: 5611,
+        urls: {
+          // The API endpoint for verification
+          apiURL:"https://open-platform.nodereal.io/6bb50c7641a7425ca2c83fbf8bb56219/op-bnb-testnet/contract/",
+          // The block explorer URL
+          browserURL: "https://testnet.opbnbscan.com/",
+        },
+      },
+      {
+        network: "avalancheFuji",
+        chainId: 43113,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/43113/etherscan",
+          browserURL: "https://avalanche.routescan.io"
+        }
+      }
     ],
   }
   //   apiKey: {

@@ -8,7 +8,6 @@ import { useAppStore, useAppActions } from "@/store/useAppStore";
 import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from "wagmi";
 import { contracts } from "@/lib/contracts";
 import { parseUnits, maxUint256 } from "viem";
-import { scrollSepolia } from "viem/chains";
 
 export const TopupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [amount, setAmount] = useState('');
@@ -36,7 +35,7 @@ export const TopupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
       ...contracts.usdc,
       functionName: 'approve',
       args: [contracts.tokenPool.address, maxUint256],
-      chain: scrollSepolia,
+      chain: AppChain,
       account: address!,
     });
   };
@@ -51,7 +50,7 @@ export const TopupModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
       ...contracts.tokenPool,
       functionName: 'depositFor',
       args: [selfReceiverHash, amountAsBigInt],
-      chain: scrollSepolia,
+      chain: AppChain,
       account: address!,
     });
   };

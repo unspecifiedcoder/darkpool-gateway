@@ -19,10 +19,9 @@ import {
 } from "wagmi";
 import { readContract } from "wagmi/actions"; // Import the readContract action
 import { config } from "@/main"; // Import our exported wagmi config
-import { contracts } from "@/lib/contracts";
+import { AppChain, contracts } from "@/lib/contracts";
 import { parseUnits, isAddress, getAddress, Hex, toHex } from "viem";
 import { EventLog, ethers } from "ethers"; // Ethers is useful for parsing logs
-import { scrollSepolia } from "viem/chains";
 import { ProofGenerationLoader } from "../ProofGenerationLoader";
 import { generateWithdrawTransferProof } from "@/lib/proof";
 
@@ -143,7 +142,7 @@ export const WithdrawModal = ({
         ...contracts.tokenPool,
         functionName: "withdraw",
         args: [getAddress(recipient), { honkProof: toHex(proof), publicInputs }],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: eoaAddress,
       }, {
         onSuccess: (txHash) => {

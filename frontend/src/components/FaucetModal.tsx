@@ -6,12 +6,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
-import { contracts } from '@/lib/contracts';
+import { AppChain, contracts } from '@/lib/contracts';
 import { parseUnits } from 'viem';
 import { toast } from 'sonner';
-import { scrollSepolia } from 'viem/chains';
 import { useAppActions } from '@/store/useAppStore'; 
-// import { scrollSepolia } from '@/lib/chains';
 
 const FaucetModal = () => {
   const [amount, setAmount] = useState<string>('1000');
@@ -31,7 +29,7 @@ const FaucetModal = () => {
       abi: contracts.faucet.abi,
       functionName: 'requestTokens',
       args: [amountAsBigInt],
-      chain: scrollSepolia,
+      chain: AppChain,
       account: account.address,
     });
   };
@@ -44,7 +42,7 @@ const FaucetModal = () => {
         description: `You have received ${amount} mock USDC.`,
         action: {
             label: 'View Tx',
-            onClick: () => window.open(`https://sepolia.scrollscan.com/tx/${hash}`, '_blank'),
+            onClick: () => window.open(`https://testnet.opbnbscan.com/tx/${hash}`, '_blank'),
         },
       });
       triggerRefetch();
@@ -75,7 +73,7 @@ const FaucetModal = () => {
         <DialogHeader>
           <DialogTitle className="text-glow">Testnet Faucet</DialogTitle>
           <DialogDescription>
-            Mint mock USDC tokens for testing on Scroll Sepolia.
+            Mint mock USDC tokens for testing on OP BNB.
           </DialogDescription>
         </DialogHeader>
         

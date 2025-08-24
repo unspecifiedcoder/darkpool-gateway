@@ -8,7 +8,7 @@ import { contracts } from '@/lib/contracts';
 import { parseUnits, Hex } from 'viem';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/useAppStore';
-import { scrollSepolia } from 'viem/chains';
+import { AppChain } from '@/lib/contracts';
 import { ethers } from 'ethers';
 
 type ModalProps = {
@@ -43,7 +43,7 @@ export const ManageMarginModal = ({ positionId, onClose, onSuccess, type }: Moda
           ...contracts.privacyProxy,
           functionName: type === 'add' ? 'addMargin' : 'removeMargin',
           args: [positionId, amountAsBigInt, signature],
-          chain: scrollSepolia,
+          chain: AppChain,
           account: address,
         }, {
             onSuccess: () => toast.info("Submitting private transaction...", { id: toastId }),
@@ -58,7 +58,7 @@ export const ManageMarginModal = ({ positionId, onClose, onSuccess, type }: Moda
         ...contracts.clearingHouse,
         functionName: type === 'add' ? 'addMargin' : 'removeMargin',
         args: [positionId, amountAsBigInt],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: address,
       }, {
           onSuccess: () => toast.info("Submitting public transaction...", { id: toastId }),

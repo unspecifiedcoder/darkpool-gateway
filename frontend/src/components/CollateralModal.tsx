@@ -19,7 +19,7 @@ import {
 } from "wagmi";
 import { readContract } from "wagmi/actions";
 import { config } from "@/main";
-import { contracts } from "@/lib/contracts";
+import { AppChain, contracts } from "@/lib/contracts";
 import {
   parseUnits,
   maxUint256,
@@ -31,7 +31,6 @@ import {
 import { toast } from "sonner";
 import { useAppStore, useAppActions } from "@/store/useAppStore";
 import { ethers, EventLog } from "ethers";
-import { scrollSepolia } from "viem/chains";
 import { generateWithdrawTransferProof } from "@/lib/proof";
 import { ProofGenerationLoader } from "./ProofGenerationLoader";
 
@@ -108,7 +107,7 @@ export const CollateralModal = ({
         ...contracts.usdc,
         functionName: "approve",
         args: [spenderAddress, maxUint256],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: address!,
       },
       {
@@ -132,7 +131,7 @@ export const CollateralModal = ({
               ...contracts.privacyProxy,
               functionName: "depositCollateralFromEOA",
               args: [userClient!.pubKey, amountAsBigInt],
-              chain: scrollSepolia,
+              chain: AppChain,
               account: address!,
             });
           } else {
@@ -182,7 +181,7 @@ export const CollateralModal = ({
                   userClient!.pubKey,
                   { honkProof: toHex(proof), publicInputs },
                 ],
-                chain: scrollSepolia,
+                chain: AppChain,
                 account: address!,
               },
               {
@@ -206,7 +205,7 @@ export const CollateralModal = ({
               ...contracts.clearingHouse,
               functionName: "depositCollateral",
               args: [amountAsBigInt],
-              chain: scrollSepolia,
+              chain: AppChain,
               account: address!,
             },
             {
@@ -240,7 +239,7 @@ export const CollateralModal = ({
                 userClient!.receiverHash.toString(),
                 signature,
               ],
-              chain: scrollSepolia,
+              chain: AppChain,
               account: address!,
             },
             {
@@ -255,7 +254,7 @@ export const CollateralModal = ({
               ...contracts.clearingHouse,
               functionName: "withdrawCollateral",
               args: [amountAsBigInt],
-              chain: scrollSepolia,
+              chain: AppChain,
               account: address!,
             },
             {

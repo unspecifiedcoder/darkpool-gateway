@@ -8,10 +8,9 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAppStore, useAppActions } from "@/store/useAppStore";
 import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useAccount } from "wagmi";
-import { contracts } from "@/lib/contracts";
+import { AppChain, contracts } from "@/lib/contracts";
 import { parseUnits, maxUint256, Hex } from "viem";
 import { ethers } from "ethers";
-import { scrollSepolia } from "viem/chains";
 import { generate_precommitment } from "@/lib/proof";
 
 export const DepositModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
@@ -42,7 +41,7 @@ export const DepositModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       ...contracts.usdc,
       functionName: "approve",
       args: [contracts.tokenPool.address, maxUint256],
-      chain: scrollSepolia,
+      chain: AppChain,
       account: address!,
     }, {
       onError: (err) => toast.error("Approval failed", { description: err.message })
@@ -64,7 +63,7 @@ export const DepositModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             ...contracts.tokenPool,
             functionName: "deposit",
             args: [amountAsBigInt, precommitment.toString()],
-            chain: scrollSepolia,
+            chain: AppChain,
             account: address!,
         });
       } catch (e: any) {
@@ -78,7 +77,7 @@ export const DepositModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
         ...contracts.tokenPool,
         functionName: 'depositFor',
         args: [selfReceiverHash, amountAsBigInt],
-        chain: scrollSepolia,
+        chain: AppChain,
         account: address!,
       });
     }
