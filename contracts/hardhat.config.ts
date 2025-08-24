@@ -14,7 +14,7 @@ if (!process.env.OPTIMISM_ETHERSCAN_API_KEY) {
 }
 
 // hardhat 18th
-const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "0x9c3ca01a839e49b08fb9e53ad1ff36b7d7c0c6e421354cc222f6ddac5cfe9e53";
+const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY || "";
 const optimismEtherscanApiKey = process.env.OPTIMISM_ETHERSCAN_API_KEY || "";
 const scrollSepoliaEtherscanApiKey = process.env.SCROLL_SEPOLIA_ETHERSCAN_API_KEY || "";
 console.log(optimismEtherscanApiKey , scrollSepoliaEtherscanApiKey);
