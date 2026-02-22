@@ -37,9 +37,9 @@ const Header = () => {
             <span className="text-accent">Perps</span>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground bg-accent/20 px-2 py-1 rounded-md border border-accent/30">
+        {/* <div className="text-xs text-muted-foreground bg-accent/20 px-2 py-1 rounded-md border border-accent/30">
           OP BNB
-        </div>
+        </div> */}
       </div>
 
       <div className="flex items-center gap-6">
